@@ -3,6 +3,6 @@
 #include <Arduino.h>
 #include <stdint.h>
 
-String PayloadFormat(float temp, float humidity, float fine_dust);
+String PayloadFormat(float temperature, float humidity, float pm25, float gas);
 
 #endif

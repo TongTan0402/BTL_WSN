@@ -1,14 +1,20 @@
 #include "server.h"
 #include <WiFi.h>
 #include <HTTPClient.h>
+#include <WiFiClientSecure.h>
 
 Server_c Server;
+
+
+HTTPClient http;
+WiFiClientSecure client;
 
 void Server_c::begin(const char *ssid, const char *password, const char *scriptURL)
 {
   this->scriptURL = scriptURL;
 
   WiFi.begin(ssid, password);
+  Serial.print("Wifi connecting");
 
   while (WiFi.status() != WL_CONNECTED) 
   {
@@ -23,8 +29,8 @@ void Server_c::SendData(String payload)
 {
   if (WiFi.status() == WL_CONNECTED) 
   {
-    HTTPClient http;
-    http.begin(this->scriptURL);
+    client.setInsecure(); 
+    http.begin(client, this->scriptURL);
     http.addHeader("Content-Type", "application/json");
 
     int httpResponseCode = http.POST(payload);
