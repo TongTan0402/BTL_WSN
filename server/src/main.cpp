@@ -1,6 +1,6 @@
 #include <Arduino.h>
-#include "../lib/payload_format.h"
-#include "../lib/server.h"
+#include <server.h>
+#include <payload_format.h>
 
 void setup() {
   Serial.begin(115200);
