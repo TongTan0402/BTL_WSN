@@ -1,18 +1,21 @@
 #include <Arduino.h>
-
-// put function declarations here:
-int myFunction(int, int);
+#include "../lib/payload_format.h"
+#include "../lib/server.h"
 
 void setup() {
-  // put your setup code here, to run once:
-  int result = myFunction(2, 3);
+  Serial.begin(115200);
+  Server.begin("Your_SSID", "Your_PASSWORD", "Your_WEBAPP_URL");
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-}
+  float temperature = 27.3; 
+  float humidity = 55.1;    
+  float fine_dust = 12.4;   
 
-// put function definitions here:
-int myFunction(int x, int y) {
-  return x + y;
+  String payload = PayloadFormat(temperature, humidity, fine_dust);
+  Serial.println("Payload: " + payload);
+  
+  Server.SendData(payload);
+  
+  delay(1000);
 }
