@@ -1,19 +1,17 @@
 #include "DHT11.h"
 
-// Khởi tạo các giá trị ban đầu
+// --- Khởi tạo ---
 DHT11::DHT11(int pin) {
     _pin = pin;
     pinMode(_pin, INPUT);
-    _temperature = 0;
-    _humidity = 0;
-    _isValid = false;
 }
 
+// --- Đọc dữ liệu thô từ cảm biến ---
 bool DHT11::_readRawData(uint8_t data[5]) {
     uint8_t cnt = 7, idx = 0;
     for (int i = 0; i < 5; i++) data[i] = 0;
 
-    // Bắt đầu tín hiệu
+    // Gửi tín hiệu bắt đầu
     pinMode(_pin, OUTPUT);
     digitalWrite(_pin, LOW);
     delay(18);
@@ -26,7 +24,7 @@ bool DHT11::_readRawData(uint8_t data[5]) {
     while (digitalRead(_pin) == HIGH)
         if (micros() - start > 80) return false;
 
-    // Bỏ qua tín hiệu phản hồi đầu
+    // Bỏ qua tín hiệu phản hồi ban đầu
     start = micros();
     while (digitalRead(_pin) == LOW)
         if (micros() - start > 80) return false;
@@ -57,22 +55,16 @@ bool DHT11::_readRawData(uint8_t data[5]) {
     return (uint8_t)(data[0] + data[1] + data[2] + data[3]) == data[4];
 }
 
-// --- Đọc dữ liệu và trả ra nhiệt độ + độ ẩm ---
-bool DHT11::read(float &temperature, float &humidity) {
+// --- Hàm read() mới: trả về luôn nhiệt độ, độ ẩm và trạng thái ---
+DHT11::Data DHT11::read() {
     uint8_t data[5];
-    if (!_readRawData(data)) {
-        _isValid = false;
-        return false;
-    }
+    Data result = {0, 0, false};
 
-    _humidity = data[0];      // phần nguyên độ ẩm
-    _temperature = data[2];   // phần nguyên nhiệt độ
-    temperature = _temperature;
-    humidity = _humidity;
-    _isValid = true;
-    return true;
-}
+    if (!_readRawData(data))
+        return result; // Dữ liệu lỗi
 
-bool DHT11::isValid() {
-    return _isValid;
+    result.humidity = data[0];
+    result.temperature = data[2];
+    result.valid = true;
+    return result;
 }

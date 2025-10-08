@@ -32,14 +32,11 @@ void loop() {
   float dustDensity = dust.readDustDensity();
 
   // --- Đọc cảm biến nhiệt độ & độ ẩm ---
-  if (dht.read() && dht.isValid()) {
-    float temp = dht.getTemperature();
-    float hum  = dht.getHumidity();
-
-    // --- In dữ liệu ra Serial ---
-    Serial.printf("Temp: %.1f°C  Hum: %.1f%%  ", temp, hum);
+  auto d = dht.read();
+  if (d.valid) {
+    Serial.printf("Temp: %.1f°C  Hum: %.1f%%\n", d.temperature, d.humidity);
   } else {
-    Serial.print("DHT11 Error  ");
+    Serial.println("DHT11 error!");
   }
 
   Serial.printf("MQ2: %.2f ppm  ", ppm);

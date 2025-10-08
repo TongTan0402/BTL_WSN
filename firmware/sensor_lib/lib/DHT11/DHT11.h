@@ -2,20 +2,20 @@
 #define DHT11_H
 
 #include <Arduino.h>
-
 class DHT11 {
 private:
     int _pin;
-    float _temperature;
-    float _humidity;
-    bool _isValid;
-
     bool _readRawData(uint8_t data[5]);
-
 public:
+    struct Data {
+        float temperature;  // Nhiệt độ (°C)
+        float humidity;     // Độ ẩm (%)
+        bool valid;         // Cờ kiểm tra dữ liệu hợp lệ
+    };
+
     DHT11(int pin);
-    bool read(float &temperature, float &humidity); 
-    bool isValid();
+    Data read();  // Đọc cảm biến, trả về cả 3 giá trị
+
 };
 
 #endif
