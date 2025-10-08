@@ -57,25 +57,20 @@ bool DHT11::_readRawData(uint8_t data[5]) {
     return (uint8_t)(data[0] + data[1] + data[2] + data[3]) == data[4];
 }
 
-bool DHT11::read() {
+// --- Đọc dữ liệu và trả ra nhiệt độ + độ ẩm ---
+bool DHT11::read(float &temperature, float &humidity) {
     uint8_t data[5];
     if (!_readRawData(data)) {
         _isValid = false;
         return false;
     }
 
-    _humidity = data[0];        // phần nguyên độ ẩm
-    _temperature = data[2];     // phần nguyên nhiệt độ
+    _humidity = data[0];      // phần nguyên độ ẩm
+    _temperature = data[2];   // phần nguyên nhiệt độ
+    temperature = _temperature;
+    humidity = _humidity;
     _isValid = true;
     return true;
-}
-
-float DHT11::getTemperature() {
-    return _temperature;
-}
-
-float DHT11::getHumidity() {
-    return _humidity;
 }
 
 bool DHT11::isValid() {
