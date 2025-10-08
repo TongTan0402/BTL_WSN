@@ -10,7 +10,7 @@ class Server_c
 
   public:
     void begin(const char *ssid, const char *password, const char *scriptURL);
-    void SendData(String payload);
+    void sendData(String payload);
 
 };
 

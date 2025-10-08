@@ -20,7 +20,7 @@ void loop() {
 
   String payload = PayloadFormat(temperature, humidity, pm25, gas);
 
-  Server.SendData(payload);
-  
+  Server.sendData(payload);
+
   Serial.println("Payload: " + payload);
 }

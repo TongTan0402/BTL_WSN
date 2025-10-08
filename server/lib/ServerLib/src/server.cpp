@@ -3,11 +3,12 @@
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
 
-Server_c Server;
-
-
+// Private Variables
 HTTPClient http;
 WiFiClientSecure client;
+
+// Global Server Object
+Server_c Server;
 
 void Server_c::begin(const char *ssid, const char *password, const char *scriptURL)
 {
@@ -25,7 +26,7 @@ void Server_c::begin(const char *ssid, const char *password, const char *scriptU
   Serial.println("\nWiFi connected!");
 }
 
-void Server_c::SendData(String payload)
+void Server_c::sendData(String payload)
 {
   if (WiFi.status() == WL_CONNECTED) 
   {
