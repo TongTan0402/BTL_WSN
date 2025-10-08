@@ -1,5 +1,5 @@
 {
-  "name": "ServerLib",
+  "name": "server",
   "version": "1.0.0",
   "description": "Server and payload handling for ESP32",
   "build": {

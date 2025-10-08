@@ -58,13 +58,11 @@ bool DHT11::_readRawData(uint8_t data[5]) {
 // --- Hàm read() mới: trả về luôn nhiệt độ, độ ẩm và trạng thái ---
 DHT11::Data DHT11::read() {
     uint8_t data[5];
-    Data result = {0, 0, false};
 
-    if (!_readRawData(data))
-        return result; // Dữ liệu lỗi
-
-    result.humidity = data[0];
-    result.temperature = data[2];
-    result.valid = true;
+    if (_readRawData(data)) 
+    {
+        result.humidity = data[0];
+        result.temperature = data[2];
+    }
     return result;
 }

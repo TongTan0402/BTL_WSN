@@ -1,0 +1,8 @@
+{
+  "name": "firmware",
+  "version": "1.0.0",
+  "description": "Firmware for ESP32",
+  "build": {
+    "includeDir": "include"
+  }
+}
