@@ -10,6 +10,7 @@ MP25::MP25(int ledPin, int adcPin, float Vcc) {
 // thiết lập pinmode và sample
 void MP25::begin(int samples, float offset) {
     pinMode(_ledPin, OUTPUT);
+    pinMode(_adcPin, INPUT);
     _samples = samples;
     _offset = offset;
 }

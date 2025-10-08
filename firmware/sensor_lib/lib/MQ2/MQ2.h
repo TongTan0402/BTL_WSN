@@ -22,7 +22,7 @@ public:
     void begin(float Ro_calib);
     void setGasCurve(float slope, float intercept);
     float calibrateRo(int samples = 50, int delayMs = 200); // hiệu chuẩn Ro trong không khí sạch
-    float readRs();
+    float readRs(int samples = 10);
     float getRatio();
     float readPPM();        // trả về nồng độ không khí tính theo ppm.
 };

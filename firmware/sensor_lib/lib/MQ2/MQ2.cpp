@@ -43,8 +43,8 @@ float MQ2::readRsOnce() {
 }
 
 // Đọc Rs với trung bình nhiều mẫu
-float MQ2::readRs() {
-    float Vadc_avg = readADC_Avg(10);
+float MQ2::readRs(int samples) {
+    float Vadc_avg = readADC_Avg(samples);
     float Vout = (Vadc_avg / 4095.0) * 3.3 * _divider;
     if (Vout <= 0.0001) return 1e6;
     float Rs = _RL * (_Vcc - Vout) / Vout;
