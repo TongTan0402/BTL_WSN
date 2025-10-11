@@ -6,11 +6,13 @@
 class Server_c
 {
   private:
-    const char *scriptURL;
+    const char* scriptURL;
 
   public:
-    void begin(const char *ssid, const char *password, const char *scriptURL);
+    void begin(const char* scriptURL);
     void sendData(String payload);
+    void MQTTLoop();
+    bool CheckUpdate();
 
 };
 

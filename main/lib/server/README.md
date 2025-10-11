@@ -87,10 +87,3 @@ Nếu trả về `OK` và bạn thấy một hàng mới trong Google Sheet — 
 ## 7. Khắc phục lỗi thường gặp
 - `ERROR` từ Apps Script: mở `Executions` trong Apps Script để xem logs và lỗi chi tiết.
 - Không thấy dữ liệu trong Sheets: kiểm tra đúng sheet đang active, đúng column order và không có lỗi JSON.
-
----
-
-Nếu bạn muốn, mình có thể:
-- Thêm ví dụ mã cho ESP32/ESP8266 (Arduino) để POST JSON (mình có thể dùng `HTTPClient` hoặc `WiFiClientSecure`).
-- Thêm kiểm tra token đơn giản trong `doPost`.
-- Cấu hình hướng dẫn bằng PlatformIO để build firmware.

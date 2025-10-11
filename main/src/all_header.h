@@ -13,9 +13,13 @@
 #include <MP25.h>
 #include <MQ2.h>
 
-#define PIN_MQ2    34
-#define PIN_DHT    4
-#define PIN_PM_LED 23
-#define PIN_PM_ADC 32
+// Google Apps Script URL
+const char* scriptURL = "https://script.google.com/macros/s/AKfycbwhTF9oBVzyj8QJrQak8oJ33r3Y5sb9E3t3pU96MB9cQt6CT6TCBKiZiFTQa9Oolbc/exec";
+
+// Pin Definitions
+#define PIN_MQ2       34
+#define PIN_DHT       4
+#define PIN_PM_LED    23
+#define PIN_PM_ADC    32
 
 #endif // __ALL_HEADER_H__
