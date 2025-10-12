@@ -10,11 +10,33 @@ enum {
   CHECK_UPDATE_PRIORITY
 };
 
+void SendHTTPTTask(void *parameter);
+void CheckUpdateFirmwareTask(void *parameter);
+
+void setup() {
+  Serial.begin(115200);
+
+  // Kết nối WiFi và khởi tạo server
+  Server.begin(scriptURL);
+  
+  // Khởi tạo cảm biến
+  mq2.begin(10.0);         // Ro hiệu chuẩn (kΩ)
+  dust.begin(10, -15.0);   // 10 mẫu, offset -15 µg/m³
+
+  xTaskCreatePinnedToCore(SendHTTPTTask, "SendHTTPTTask", 8192, NULL, SEND_HTTP_PRIORITY, NULL, 0);
+  xTaskCreatePinnedToCore(CheckUpdateFirmwareTask, "CheckUpdateFirmwareTask", 8192, NULL, CHECK_UPDATE_PRIORITY, NULL, 1);
+}
+
+
+void loop() {
+}
+
+
 void SendHTTPTTask(void *parameter) {
   for(;;) {
     if(Server.CheckUpdate()) 
     {
-      vTaskDelay(1000 / portTICK_PERIOD_MS);
+      vTaskDelay(10000 / portTICK_PERIOD_MS);
       continue;
     }
     // --- Đọc cảm biến khí gas ---
@@ -41,26 +63,6 @@ void CheckUpdateFirmwareTask(void *parameter) {
   for(;;) {
     Server.MQTTLoop();
 
-    // Serial.println("Đang chờ...");
-
-    vTaskDelay(1 / portTICK_PERIOD_MS); 
+    vTaskDelay(10 / portTICK_PERIOD_MS);  // Delay 10ms sau mỗi batch
   }
-}
-
-void setup() {
-  Serial.begin(115200);
-
-  // Kết nối WiFi và khởi tạo server
-  Server.begin(scriptURL);
-  
-  // Khởi tạo cảm biến
-  mq2.begin(10.0);         // Ro hiệu chuẩn (kΩ)
-  dust.begin(10, -15.0);   // 10 mẫu, offset -15 µg/m³
-
-  xTaskCreatePinnedToCore(SendHTTPTTask, "SendHTTPTTask", 8192, NULL, SEND_HTTP_PRIORITY, NULL, 0);
-  xTaskCreatePinnedToCore(CheckUpdateFirmwareTask, "CheckUpdateFirmwareTask", 8192, NULL, CHECK_UPDATE_PRIORITY, NULL, 1);
-}
-
-
-void loop() {
 }

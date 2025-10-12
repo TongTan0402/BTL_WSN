@@ -23,6 +23,7 @@ const char* firmware_url = "https://raw.githubusercontent.com/TongTan0402/firmwa
 String topic_ota = "ota/";
 
 bool update_firmware = false;
+unsigned long lastReconnectAttempt = 0;  // Thời gian lần cuối thử reconnect
 
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -85,17 +86,31 @@ void MQTT_Callback(char* topic, byte* payload, unsigned int length) {
   payload[length] = '\0';
   String msg = (char*)payload;
   Serial.printf("Nhận từ topic %s: %s\n", topic, msg.c_str());
+  
   if (msg == "update") 
   {
+    Serial.println("Đã nhận lệnh UPDATE!");
+    
     update_firmware = true;
   }
 }
 
 void MQTT_Reconnect() {
   while (!client.connected()) {
-    if (client.connect("ESP32_Device1")) {
-      client.subscribe(topic_ota.c_str());
+    Serial.println("Đang kết nối MQTT...");
+    
+    // Tạo Client ID duy nhất dựa trên Device ID
+    if (client.connect(GetDeviceId().c_str())) {
+      Serial.println("MQTT kết nối thành công!");
+      // Subscribe với QoS 1 để đảm bảo nhận được message
+      bool subscribed = client.subscribe(topic_ota.c_str(), 1);
+      if (subscribed) {
+        Serial.printf("Đã subscribe topic: %s với QoS 1\n", topic_ota.c_str());
+      } else {
+        Serial.println("Lỗi subscribe topic!");
+      }
     } else {
+      Serial.printf("MQTT kết nối thất bại, rc=%d. Thử lại sau 2s...\n", client.state());
       delay(2000);
     }
   }
@@ -158,7 +173,7 @@ void InputWiFiInfo() {
 // -------------------------------
 
 void WiFi_MQTT_Init() {
-  Serial.println("Device ID: " + GetDeviceId());
+  Serial.println("\nDevice ID: " + GetDeviceId());
 
   prefs.begin("wifi", false); // namespace: "wifi"
 
@@ -207,13 +222,31 @@ void WiFi_MQTT_Init() {
 
   client.setServer(mqtt_server, 1883);
   client.setCallback(MQTT_Callback);
+  client.setKeepAlive(60);  // Keep-alive 60s (giá trị ổn định)
+  client.setBufferSize(64);  // Tăng buffer size để nhận message tốt hơn
 }
 
 void Server_c::MQTTLoop() {
-  if (!client.connected()) MQTT_Reconnect();
-  client.loop();
+  // Chỉ reconnect nếu chưa kết nối VÀ đã qua 5 giây từ lần thử cuối
+  if (!client.connected()) {
+    unsigned long now = millis();
+    if (now - lastReconnectAttempt > 5000) {  // 5 giây giữa các lần reconnect
+      lastReconnectAttempt = now;
+      MQTT_Reconnect();
+    }
+  } else {
+    // Nếu đã kết nối, gọi loop() để xử lý message
+    client.loop();
+  }
 
   if (update_firmware) {
+
+    delay(3000); // Đợi 3 giây trước khi bắt đầu OTA
+
+    // Xóa retained message bằng cách publish empty message
+    client.publish(topic_ota.c_str(), "", true);
+    Serial.println("Đã xóa retained message\n");
+    
     Serial.println("Bắt đầu cập nhật firmware...");
     OtaUpdate();
   }
