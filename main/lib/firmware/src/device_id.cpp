@@ -5,7 +5,7 @@ const std::vector<std::pair<uint64_t, const char*>> device_ids = {
   {0x000074BEA9E342A8ULL, "A101"},
   {0x000074D42FA7DBCCULL, "B202"},
   {0x0000FC462F2B1838ULL, "C303"},
-  {0x000074D42FA7DBCCULL, "D404"},
+  {0x000030A6851C0610ULL, "D404"},
 };
 
 

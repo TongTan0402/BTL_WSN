@@ -10,6 +10,11 @@ enum {
   CHECK_UPDATE_PRIORITY
 };
 
+TaskHandle_t SendHTTPHandle; // handle của task gửi HTTP
+TaskHandle_t CheckUpdateHandle; // handle của task kiểm tra cập nhật
+
+unsigned long last_time = 0; // thời gian lần thử reconnect WiFi cuối cùng
+
 void SendHTTPTTask(void *parameter);
 void CheckUpdateFirmwareTask(void *parameter);
 
@@ -23,22 +28,79 @@ void setup() {
   mq2.begin(10.0);         // Ro hiệu chuẩn (kΩ)
   dust.begin(10, -15.0);   // 10 mẫu, offset -15 µg/m³
 
-  xTaskCreatePinnedToCore(SendHTTPTTask, "SendHTTPTTask", 8192, NULL, SEND_HTTP_PRIORITY, NULL, 0);
-  xTaskCreatePinnedToCore(CheckUpdateFirmwareTask, "CheckUpdateFirmwareTask", 8192, NULL, CHECK_UPDATE_PRIORITY, NULL, 1);
+  xTaskCreatePinnedToCore(SendHTTPTTask, "SendHTTPTTask", 10000, NULL, SEND_HTTP_PRIORITY, &SendHTTPHandle, 1);
+  xTaskCreatePinnedToCore(CheckUpdateFirmwareTask, "CheckUpdateFirmwareTask", 10000, NULL, CHECK_UPDATE_PRIORITY, &CheckUpdateHandle, 1);
 }
 
 
-void loop() {
+void loop() 
+{
+  // if(Server.IsWiFiConnected()) 
+  // {
+  //   if(!Server.CheckUpdate())
+  //   {
+  //     if (eTaskGetState(SendHTTPHandle) == eSuspended) 
+  //     {
+  //       vTaskResume(SendHTTPHandle);
+  //     }
+  //     if (eTaskGetState(CheckUpdateHandle) == eSuspended) 
+  //     {
+  //       vTaskResume(CheckUpdateHandle);
+  //     }
+  //   }
+  // } 
+  // else
+  // {
+  //   if (eTaskGetState(SendHTTPHandle) != eSuspended) 
+  //   {
+  //     vTaskSuspend(SendHTTPHandle);
+  //   }
+  //   if(eTaskGetState(CheckUpdateHandle) != eSuspended) 
+  //   {
+  //     vTaskSuspend(CheckUpdateHandle);
+  //   }
+
+    // // Thử reconnect WiFi mỗi 10 giây
+    // unsigned long currentMillis = millis();
+    // if (currentMillis - last_time >= 10000) {
+    //   last_time = currentMillis;
+    //   Server.ReconnectWiFi();
+    // }
+  // }
+
+  if(Serial.available()) 
+  {
+    String str = Serial.readStringUntil('\n');
+    str.trim();
+    if(str.equalsIgnoreCase("change wifi")) 
+    {
+      if (eTaskGetState(SendHTTPHandle) != eSuspended) 
+      {
+        vTaskSuspend(SendHTTPHandle);
+      }
+      if(eTaskGetState(CheckUpdateHandle) != eSuspended) 
+      {
+        vTaskSuspend(CheckUpdateHandle);
+      }
+
+      // Thay đổi WiFi
+      while(1)
+      {
+        Server.ChangeWiFiInfo();
+        Server.ReconnectWiFi();
+        if (Server.IsWiFiConnected()) {
+          vTaskResume(SendHTTPHandle);
+          vTaskResume(CheckUpdateHandle);
+          break;
+        }
+      }
+    }
+  }
 }
 
 
 void SendHTTPTTask(void *parameter) {
   for(;;) {
-    if(Server.CheckUpdate()) 
-    {
-      vTaskDelay(10000 / portTICK_PERIOD_MS);
-      continue;
-    }
     // --- Đọc cảm biến khí gas ---
     float ppm = mq2.readPPM();
 
@@ -63,6 +125,16 @@ void CheckUpdateFirmwareTask(void *parameter) {
   for(;;) {
     Server.MQTTLoop();
 
+    if(Server.CheckUpdate()) 
+    {
+      if (eTaskGetState(SendHTTPHandle) != eSuspended) 
+      {
+        vTaskSuspend(SendHTTPHandle);
+      }
+    
+      Serial.println("Bắt đầu cập nhật firmware...");
+      Server.OtaUpdate();
+    }
     vTaskDelay(10 / portTICK_PERIOD_MS);  // Delay 10ms sau mỗi batch
   }
 }

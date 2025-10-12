@@ -13,7 +13,10 @@ class Server_c
     void sendData(String payload);
     void MQTTLoop();
     bool CheckUpdate();
-
+    void ChangeWiFiInfo();
+    void ReconnectWiFi();
+    bool IsWiFiConnected();
+    void OtaUpdate();
 };
 
 extern Server_c Server;
