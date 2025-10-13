@@ -20,6 +20,13 @@ void CheckUpdateFirmwareTask(void *parameter);
 
 void setup() {
   Serial.begin(115200);
+  delay(1000);
+  
+  Serial.println("\n\n========================================");
+  Serial.println("ESP32 đã khởi động!");
+  Serial.printf("Firmware version: %s\n", __DATE__ " " __TIME__);
+  Serial.printf("Free heap: %d bytes\n", ESP.getFreeHeap());
+  Serial.println("========================================\n");
 
   // Kết nối WiFi và khởi tạo server
   Server.begin(scriptURL);
@@ -35,39 +42,6 @@ void setup() {
 
 void loop() 
 {
-  // if(Server.IsWiFiConnected()) 
-  // {
-  //   if(!Server.CheckUpdate())
-  //   {
-  //     if (eTaskGetState(SendHTTPHandle) == eSuspended) 
-  //     {
-  //       vTaskResume(SendHTTPHandle);
-  //     }
-  //     if (eTaskGetState(CheckUpdateHandle) == eSuspended) 
-  //     {
-  //       vTaskResume(CheckUpdateHandle);
-  //     }
-  //   }
-  // } 
-  // else
-  // {
-  //   if (eTaskGetState(SendHTTPHandle) != eSuspended) 
-  //   {
-  //     vTaskSuspend(SendHTTPHandle);
-  //   }
-  //   if(eTaskGetState(CheckUpdateHandle) != eSuspended) 
-  //   {
-  //     vTaskSuspend(CheckUpdateHandle);
-  //   }
-
-    // // Thử reconnect WiFi mỗi 10 giây
-    // unsigned long currentMillis = millis();
-    // if (currentMillis - last_time >= 10000) {
-    //   last_time = currentMillis;
-    //   Server.ReconnectWiFi();
-    // }
-  // }
-
   if(Serial.available()) 
   {
     String str = Serial.readStringUntil('\n');
@@ -100,6 +74,11 @@ void loop()
 
 
 void SendHTTPTTask(void *parameter) {
+  TickType_t xLastWakeTime;
+  const TickType_t xFrequency = 5000 / portTICK_PERIOD_MS; // 5000 ms
+
+  // Khởi tạo thời điểm ban đầu
+  xLastWakeTime = xTaskGetTickCount();
   for(;;) {
     // --- Đọc cảm biến khí gas ---
     float ppm = mq2.readPPM();
@@ -117,7 +96,7 @@ void SendHTTPTTask(void *parameter) {
 
     Serial.println("Payload: " + payload);
 
-    vTaskDelay(5000 / portTICK_PERIOD_MS); // Đọc mỗi 5 giây
+    vTaskDelayUntil(&xLastWakeTime, xFrequency); // Đọc mỗi 5 giây
   }
 }
 

@@ -74,25 +74,23 @@ void Server_c::OtaUpdate() {
       Serial.printf("Cập nhật thành công! Tổng thời gian: %.2f giây\n", duration / 1000.0);
       
       if (update_firmware) {
-
-        delay(2000);
-
         // Xóa retained message bằng cách publish empty message
         client.publish(update_topic.c_str(), "", true);
-        Serial.println("Đã xóa retained message\n");
+        Serial.println("Đã xóa retained message");
+        delay(500);
       }
-      delay(2000); // Đợi 2 giây trước khi restart
-
-      // Dọn dẹp trước khi restart
-      http.end();
-      client.disconnect();  // Ngắt kết nối MQTT
-      delay(500);  // Đợi MQTT disconnect
       
       Serial.println("Đang khởi động lại...");
+      Serial.flush();  // Đảm bảo message được in ra
       
+      // Dọn dẹp trước khi restart
       update_firmware = false;
-
+      client.disconnect();  // Ngắt kết nối MQTT
+      WiFi.disconnect(true);  // Ngắt WiFi hoàn toàn
+      delay(1000);  // Đợi ngắt kết nối hoàn tất
+      
       ESP.restart();
+      while(true) { delay(1000); }  // Đợi ESP restart
     } 
     else 
     {
