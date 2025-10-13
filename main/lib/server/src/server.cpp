@@ -233,10 +233,11 @@ void Server_c::ChangeWiFiInfo() {
   // --- Nhập Password ---
   Serial.println("Nhập Password: ");
   String p = "";
-  while (p.length() == 0) {
+  while (1) {
     if (Serial.available()) {
       p = Serial.readStringUntil('\n');
       p.trim();
+      break;
     }
   }
 
