@@ -3,455 +3,224 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard IoT Rimuru - Sheets & Export</title>
-    <!-- Load Tailwind CSS -->
+    <title>Dashboard IoT Rimuru - Multi Location</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        // Cấu hình Tailwind: Sử dụng Font Inter
         tailwind.config = {
             theme: {
                 extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    },
+                    fontFamily: { sans: ['Inter', 'sans-serif'] }
                 }
             }
         }
     </script>
-    <!-- Thư viện Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
-    <!-- KHÔNG CẦN Paho MQTT nữa -->
-    
-    <!-- Thư viện XLSX để xuất Excel -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-    
     <style>
-        /* Các style custom để định vị giá trị số trên Gauge */
-        .gauge-wrapper {
-            position: relative;
-            padding-bottom: 20px; 
-            max-width: 100%;
-        }
+        .gauge-wrapper { position: relative; padding-bottom: 20px; max-width: 100%; }
         .gauge-value-display {
-            position: absolute;
-            top: 55%; 
-            left: 50%; 
+            position: absolute; top: 55%; left: 50%;
             transform: translate(-50%, -50%);
-            font-size: 2.5rem; /* text-4xl */
-            font-weight: 700; /* font-bold */
-            line-height: 1;
+            font-size: 2rem; font-weight: 700;
         }
-        /* Đặt chiều cao cố định cho canvas */
-        .chart-container {
-            height: 250px;
-            max-width: 100%;
-        }
-        /* Hiển thị card đẹp hơn trên di động */
+        .chart-container { height: 220px; max-width: 100%; }
         .grid-container {
-            display: grid;
-            /* Thay đổi để đảm bảo 4 card hiển thị đẹp và responsive */
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 24px;
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 20px;
         }
     </style>
 </head>
 <body class="font-sans min-h-screen p-4 md:p-8 bg-slate-100">
 
-    <button id="export" class="fixed top-4 left-4 md:top-6 md:left-6 p-2 md:px-4 md:py-2 text-sm md:text-base font-semibold border-none bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-lg transition duration-150 z-10">
-        ⬇ Xuất Excel
-    </button>
+<button id="export" class="fixed top-4 left-4 md:top-6 md:left-6 p-2 md:px-4 md:py-2 text-sm md:text-base font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-lg transition duration-150 z-10">
+    ⬇ Xuất Excel
+</button>
 
-    <h1 class="text-3xl md:text-4xl font-extrabold text-gray-800 mb-4 mt-16 md:mt-10 text-center">Dashboard IoT Rimuru</h1>
-    
-    <!-- Thanh tùy chọn địa điểm -->
-    <div class="mb-6 flex justify-center items-center">
-        <label for="location-select" class="mr-3 text-lg font-bold text-gray-700">📍 Địa Điểm Hiển Thị:</label>
-        <select id="location-select" class="p-2 border border-gray-300 bg-white rounded-lg shadow-md hover:border-indigo-500 focus:ring-2 focus:ring-indigo-500 transition duration-150">
-            <option value="A101">Văn phòng A101</option>
-            <option value="B202">Phòng họp B202</option>
-            <option value="C303">Kho lạnh C303</option>
-            <option value="D404">Phòng Lab D404</option>
-        </select>
-    </div>
+<h1 class="text-3xl md:text-4xl font-extrabold text-gray-800 mb-8 mt-16 text-center">Dashboard IoT Rimuru</h1>
 
-    <!-- Trạng thái kết nối Sheets -->
-    <div id="status" class="text-center mb-8 p-3 rounded-lg font-medium shadow-md transition duration-300 bg-yellow-100 text-yellow-700 border border-yellow-300">
-        🟡 Đang tải dữ liệu từ Google Sheets...
-    </div>
+<!-- Trạng thái kết nối -->
+<div id="status" class="text-center mb-8 p-3 rounded-lg font-medium shadow-md bg-yellow-100 text-yellow-700 border border-yellow-300">
+    🟡 Đang tải dữ liệu từ Google Sheets...
+</div>
 
-    <div class="grid-container">
-
-        <!-- Card Nhiệt độ -->
-        <div class="bg-white p-6 rounded-xl shadow-xl hover:shadow-2xl transition duration-300">
-            <h3 class="text-xl font-bold text-gray-700 mb-4 border-b pb-2 flex items-center">
-                <span class="mr-2 text-red-500">🌡️</span> Nhiệt độ (<span id="tempUnit">°C</span>)
-            </h3>
-            <div class="gauge-wrapper">
-                <div class="chart-container">
-                    <canvas id="gaugeTemp"></canvas>
-                </div>
-                <div id="valueTemp" class="gauge-value-display text-red-600">--</div>
-            </div>
-            <div class="chart-container">
-                <canvas id="lineTemp"></canvas>
-            </div>
-        </div>
-
-        <!-- Card Độ ẩm -->
-        <div class="bg-white p-6 rounded-xl shadow-xl hover:shadow-2xl transition duration-300">
-            <h3 class="text-xl font-bold text-gray-700 mb-4 border-b pb-2 flex items-center">
-                <span class="mr-2 text-cyan-500">💧</span> Độ ẩm (%)
-            </h3>
-            <div class="gauge-wrapper">
-                <div class="chart-container">
-                    <canvas id="gaugeHumid"></canvas>
-                </div>
-                <div id="valueHumid" class="gauge-value-display text-cyan-600">--</div>
-            </div>
-            <div class="chart-container">
-                <canvas id="lineHumid"></canvas>
-            </div>
-        </div>
-
-        <!-- Card Bụi PM2.5 -->
-        <div class="bg-white p-6 rounded-xl shadow-xl hover:shadow-2xl transition duration-300">
-            <h3 class="text-xl font-bold text-gray-700 mb-4 border-b pb-2 flex items-center">
-                <span class="mr-2 text-amber-500">🌫️</span> Bụi PM2.5 (<span id="pmUnit">µg/m³</span>)
-            </h3>
-            <div class="gauge-wrapper">
-                <div class="chart-container">
-                    <canvas id="gaugePM"></canvas>
-                </div>
-                <div id="valuePM" class="gauge-value-display text-amber-600">--</div>
-            </div>
-            <div class="chart-container">
-                <canvas id="linePM"></canvas>
-            </div>
-        </div>
-
-        <!-- Card Khí Gas (MQ-2) -->
-        <div class="bg-white p-6 rounded-xl shadow-xl hover:shadow-2xl transition duration-300">
-            <h3 class="text-xl font-bold text-gray-700 mb-4 border-b pb-2 flex items-center">
-                <span class="mr-2 text-fuchsia-500">🔥</span> Khí Gas MQ-2 (<span id="gasUnit">PPM</span>)
-            </h3>
-            <div class="gauge-wrapper">
-                <div class="chart-container">
-                    <canvas id="gaugeGas"></canvas>
-                </div>
-                <div id="valueGas" class="gauge-value-display text-fuchsia-600">--</div>
-            </div>
-            <div class="chart-container">
-                <canvas id="lineGas"></canvas>
-            </div>
-        </div>
-        
-    </div>
+<!-- Khu vực hiển thị từng địa điểm -->
+<div id="dashboard"></div>
 
 <script>
-    // URL Google Sheets Web App (Sử dụng cho GET request)
-    // HÃY ĐẢM BẢO URL NÀY LÀ URL ĐÃ TRIỂN KHAI LẠI VỚI CODE.GS MỚI VÀ CÓ QUYỀN TRUY CẬP LÀ "ANYONE"
-    const GOOGLE_SHEET_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwhTF9oBVzyj8QJrQak8oJ33r3Y5sb9E3t3pU96MB9cQt6CT6TCBKiZiFTQa9Oolbc/exec";
+const GOOGLE_SHEET_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwhTF9oBVzyj8QJrQak8oJ33r3Y5sb9E3t3pU96MB9cQt6CT6TCBKiZiFTQa9Oolbc/exec";
+const REFRESH_INTERVAL_SECONDS = 3;
+const LOCATIONS = ['A101', 'B202', 'C303'];
 
-    const REFRESH_INTERVAL_SECONDS = 10 // Tự động làm mới sau 60 giây
+let dataLogAll = {}; // lưu log riêng cho từng địa điểm
+let allCharts = {};  // lưu biểu đồ của từng địa điểm
 
-    let currentLocation = document.getElementById('location-select').value; 
-    let dataLog = []; // Lưu 30 bản ghi mới nhất từ Sheets để hiển thị và export Excel
-    let refreshTimer;
+const chartColors = {
+    temp: { primary: '#ef4444', text: '#dc2626' },
+    humid: { primary: '#06b6d4', text: '#0891b2' },
+    pm25: { primary: '#f59e0b', text: '#d97706' },
+    gas: { primary: '#c026d3', text: '#a21caf' }
+};
 
-    // Màu sắc cho các biểu đồ
-    const chartColors = {
-        temp: { primary: '#ef4444', text: '#dc2626' }, // Red
-        humid: { primary: '#06b6d4', text: '#0891b2' }, // Cyan
-        pm25: { primary: '#f59e0b', text: '#d97706' }, // Amber
-        gas: { primary: '#c026d3', text: '#a21caf' } // Fuchsia
-    };
-    
-    // Mapping các Chart để dễ dàng truy cập
-    let allCharts = {};
-
-    // ========== Chart Utility Functions ==========
-    function createGauge(ctx, label, max, color = '#2563eb'){
-        return new Chart(ctx, {
-            type: 'doughnut',
-            data: { 
-                datasets:[{ 
-                    data:[0, max], 
-                    backgroundColor:[color, '#e5e7eb'], 
-                    borderWidth: 0 
-                }] 
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                circumference:180, 
-                rotation:270, 
-                cutout:'80%', 
-                plugins:{ 
-                    tooltip:{enabled:false}, 
-                    legend:{display:false} 
-                }
-            }
-        });
-    }
-    function createLine(ctx, label, color = '#2563eb'){
-        return new Chart(ctx,{
-            type:'line',
-            data:{
-                labels:[],
-                datasets:[{
-                    label:label,
-                    data:[],
-                    borderColor:color,
-                    tension: 0.4, 
-                    pointRadius: 3,
-                    pointBackgroundColor: color,
-                    fill: false
-                }]
-            },
-            options:{
-                responsive: true,
-                maintainAspectRatio: false,
-                scales:{
-                    x:{
-                        title:{display:true,text:"Thời gian"},
-                        grid: { display: false }
-                    },
-                    y:{
-                        beginAtZero:true,
-                        title:{display:true,text:label},
-                    }
-                },
-                plugins: {
-                    legend: { display: false }
-                }
-            }
-        });
-    }
-
-    /**
-     * Hàm khởi tạo và gán các biểu đồ
-     */
-    function initializeCharts() {
-        allCharts = {
-            temp: { gauge: createGauge(document.getElementById('gaugeTemp'), 'Nhiệt độ', 50, chartColors.temp.primary), line: createLine(document.getElementById('lineTemp'), 'Nhiệt độ', chartColors.temp.primary), max: 50, valueEl: document.getElementById('valueTemp'), unit: '°C', color: chartColors.temp },
-            humid: { gauge: createGauge(document.getElementById('gaugeHumid'), 'Độ ẩm', 100, chartColors.humid.primary), line: createLine(document.getElementById('lineHumid'), 'Độ ẩm', chartColors.humid.primary), max: 100, valueEl: document.getElementById('valueHumid'), unit: '%', color: chartColors.humid },
-            pm25: { gauge: createGauge(document.getElementById('gaugePM'), 'Bụi PM2.5', 300, chartColors.pm25.primary), line: createLine(document.getElementById('linePM'), 'Bụi PM2.5', chartColors.pm25.primary), max: 300, valueEl: document.getElementById('valuePM'), unit: 'µg/m³', color: chartColors.pm25 },
-            gas: { gauge: createGauge(document.getElementById('gaugeGas'), 'Khí Gas (MQ-2)', 1000, chartColors.gas.primary), line: createLine(document.getElementById('lineGas'), 'Khí Gas (PPM)', chartColors.gas.primary), max: 1000, valueEl: document.getElementById('valueGas'), unit: 'PPM', color: chartColors.gas }
-        };
-    }
-    initializeCharts();
-    
-    /**
-     * Hàm xóa tất cả dữ liệu trên biểu đồ và log Excel
-     */
-    function clearAllCharts() {
-        for (const type in allCharts) {
-            const chartSet = allCharts[type];
-            chartSet.line.data.labels = [];
-            chartSet.line.data.datasets[0].data = [];
-            chartSet.line.update();
-            chartSet.gauge.data.datasets[0].data = [0, chartSet.max];
-            chartSet.gauge.update();
-            chartSet.valueEl.innerText = '--';
-        }
-        dataLog = [];
-    }
-    
-    /**
-     * Cập nhật biểu đồ Line, Gauge và giá trị hiển thị từ dữ liệu đã tải về
-     * @param {Array} records - Mảng các đối tượng dữ liệu (30 bản ghi mới nhất)
-     */
-    function updateCharts(records) {
-        clearAllCharts();
-        
-        // 1. Lưu lại log mới (đã là 30 bản ghi mới nhất)
-        dataLog = records;
-
-        // 2. Chuẩn bị dữ liệu cho biểu đồ Line
-        let lineData = {
-            temp: [],
-            humid: [],
-            pm25: [],
-            gas: [],
-            timestamps: []
-        };
-
-        records.forEach(record => {
-            // Lấy giờ:phút:giây từ timestamp
-            // Bổ sung: Nếu timestamp là đối tượng Date/string hợp lệ, sẽ hiển thị giờ
-            const dateObj = new Date(record.timestamp);
-            const time = !isNaN(dateObj) ? dateObj.toLocaleTimeString('vi-VN', { hour12: false }) : record.timestamp;
-            
-            lineData.timestamps.push(time);
-            lineData.temp.push(parseFloat(record.temp));
-            lineData.humid.push(parseFloat(record.humid));
-            lineData.pm25.push(parseFloat(record.pm25));
-            lineData.gas.push(parseFloat(record.gas));
-        });
-
-        // 3. Cập nhật Biểu đồ Line
-        for (const type in allCharts) {
-            const chartSet = allCharts[type];
-            chartSet.line.data.labels = lineData.timestamps;
-            chartSet.line.data.datasets[0].data = lineData[type];
-            chartSet.line.update();
-        }
-
-        // 4. Cập nhật Biểu đồ Gauge và Giá trị hiện tại (lấy từ bản ghi mới nhất)
-        const latestRecord = records[records.length - 1];
-        if (latestRecord) {
-            ['temp', 'humid', 'pm25', 'gas'].forEach(type => {
-                const chartSet = allCharts[type];
-                // Ép kiểu float và làm tròn để hiển thị
-                const value = parseFloat(parseFloat(latestRecord[type]).toFixed(1));
-                
-                chartSet.gauge.data.datasets[0].data = [value, Math.max(0, chartSet.max - value)];
-                chartSet.gauge.update();
-                chartSet.valueEl.innerText = `${value}${chartSet.unit}`;
-            });
-        }
-    }
-
-
-    /**
-     * Hàm cập nhật trạng thái trên UI
-     */
-    function setStatus(status, message) {
-        const statusEl = document.getElementById('status');
-        let colorClass = "";
-        
-        if (status === 'success') {
-            colorClass = "bg-green-100 text-green-700 border border-green-300";
-        } else if (status === 'loading') {
-            colorClass = "bg-yellow-100 text-yellow-700 border border-yellow-300";
-        } else { // error
-            colorClass = "bg-red-100 text-red-700 border border-red-300";
-        }
-
-        statusEl.innerText = message;
-        statusEl.className = `text-center mb-8 p-3 rounded-lg font-medium shadow-md transition duration-300 ${colorClass}`;
-    }
-
-
-    // ========== DATA FETCHING LOGIC ==========
-
-    /**
-     * Lấy 30 bản ghi mới nhất từ Google Sheets Web App
-     */
-    async function fetchDataFromSheets(locationId) {
-        setStatus("loading", `🟡 Đang tải 30 bản ghi mới nhất cho ${locationId}...`);
-        
-        // Tạo URL GET request với tham số location
-        const apiUrl = `${GOOGLE_SHEET_WEB_APP_URL}?location=${locationId}`;
-
-        try {
-            const response = await fetch(apiUrl);
-            
-            let result;
-            try {
-                // Cố gắng parse JSON trước
-                result = await response.json(); 
-            } catch (jsonError) {
-                // Nếu parse JSON thất bại, đọc response dưới dạng text
-                const responseText = await response.text();
-                
-                // Nếu Web App chưa được triển khai đúng, responseText sẽ là HTML thông báo lỗi
-                console.error("[Sheets] Lỗi khi parse JSON. Nội dung phản hồi:", responseText);
-                
-                // Xử lý lỗi phổ biến nhất: Web App chưa được Public
-                if (responseText.startsWith("<!DOCTYPE html>") || responseText.includes("Web App đang chạy")) {
-                     setStatus("error", `🔴 LỖI CẤU HÌNH WEB APP: Vui lòng triển khai lại Apps Script và đặt "Ai có quyền truy cập" thành "Bất kỳ ai". (Lỗi: ${jsonError.name})`);
-                } else {
-                     setStatus("error", `🔴 LỖI TẢI DỮ LIỆU: Phản hồi không phải JSON hợp lệ. Chi tiết: ${jsonError.message}`);
-                }
-                clearAllCharts();
-                return; // Dừng hàm nếu parse JSON thất bại
-            }
-
-            // Xử lý kết quả JSON thành công
-            if (result.result === "success") {
-                const records = result.data || [];
-                
-                if (records.length === 0) {
-                    setStatus("success", `🟢 Kết nối thành công. Không có dữ liệu để hiển thị cho ${locationId}.`);
-                    clearAllCharts();
-                } else {
-                    updateCharts(records);
-                    const timestamp = new Date().toLocaleTimeString('vi-VN', {hour12: false});
-                    setStatus("success", `🟢 Cập nhật lúc ${timestamp}. Đã tải ${records.length} bản ghi.`);
-                }
-            } else {
-                console.error("[Sheets] Lỗi khi tải dữ liệu:", result.message);
-                setStatus("error", `🔴 LỖI TẢI DỮ LIỆU: ${result.message}`);
-                clearAllCharts();
-            }
-
-        } catch (error) {
-            console.error("[Sheets] Lỗi kết nối hoặc parse JSON:", error);
-            setStatus("error", `🔴 LỖI KẾT NỐI SHEETS: Vui lòng kiểm tra URL Web App.`);
-            clearAllCharts();
-        }
-    }
-    
-    // ========== Event Handlers & Timing ==========
-
-    /**
-     * Thiết lập timer tự động làm mới dữ liệu
-     */
-    function startRefreshTimer() {
-        if (refreshTimer) {
-            clearInterval(refreshTimer);
-        }
-        // Gọi hàm fetch data ban đầu
-        fetchDataFromSheets(currentLocation); 
-
-        // Thiết lập timer lặp lại
-        refreshTimer = setInterval(() => {
-            fetchDataFromSheets(currentLocation);
-        }, REFRESH_INTERVAL_SECONDS * 1000); 
-
-        console.log(`[Timer] Đã thiết lập tự động làm mới sau mỗi ${REFRESH_INTERVAL_SECONDS} giây.`);
-    }
-
-
-    // Xử lý khi người dùng thay đổi địa điểm trên dropdown
-    document.getElementById('location-select').addEventListener('change', (event) => {
-        currentLocation = event.target.value;
-        console.log(`[Dashboard] Chuyển sang địa điểm: ${currentLocation}. Đang làm mới...`);
-        // Khởi động lại timer để fetch data mới ngay lập tức
-        startRefreshTimer(); 
+// ====== KHỞI TẠO HTML CHO MỖI ĐỊA ĐIỂM ======
+function renderDashboard() {
+    const dash = document.getElementById('dashboard');
+    dash.innerHTML = '';
+    LOCATIONS.forEach(loc => {
+        const section = document.createElement('section');
+        section.className = "mb-10";
+        section.innerHTML = `
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center border-b-2 border-indigo-400 pb-2">
+                📍 Địa điểm: ${loc}
+            </h2>
+            <div class="grid-container" id="grid-${loc}">
+                ${createCardHTML(loc, 'temp', '🌡️ Nhiệt độ (°C)', '°C', 'text-red-600')}
+                ${createCardHTML(loc, 'humid', '💧 Độ ẩm (%)', '%', 'text-cyan-600')}
+                ${createCardHTML(loc, 'pm25', '🌫️ Bụi PM2.5 (µg/m³)', 'µg/m³', 'text-amber-600')}
+                ${createCardHTML(loc, 'gas', '🔥 Khí Gas (PPM)', 'PPM', 'text-fuchsia-600')}
+            </div>`;
+        dash.appendChild(section);
     });
+}
 
-    // Xuất Excel
-    document.getElementById('export').onclick = function(){
-        if (dataLog.length === 0) {
-            console.warn("Chưa có dữ liệu theo dõi trên dashboard để xuất Excel.");
-            return;
+function createCardHTML(loc, id, label, unit, textColor) {
+    return `
+    <div class="bg-white p-6 rounded-xl shadow-xl hover:shadow-2xl transition duration-300">
+        <h3 class="text-lg font-bold text-gray-700 mb-3 border-b pb-2 flex items-center">
+            <span class="mr-2">${label.split(' ')[0]}</span> ${label.slice(2)}
+        </h3>
+        <div class="gauge-wrapper">
+            <div class="chart-container"><canvas id="gauge-${loc}-${id}"></canvas></div>
+            <div id="value-${loc}-${id}" class="gauge-value-display ${textColor}">--</div>
+        </div>
+        <div class="chart-container"><canvas id="line-${loc}-${id}"></canvas></div>
+    </div>`;
+}
+
+// ====== TẠO BIỂU ĐỒ ======
+function createGauge(ctx, max, color){
+    return new Chart(ctx, {
+        type: 'doughnut',
+        data: { datasets:[{ data:[0, max], backgroundColor:[color, '#e5e7eb'], borderWidth: 0 }] },
+        options: {
+            responsive:true, maintainAspectRatio:false,
+            circumference:180, rotation:270, cutout:'80%',
+            plugins:{ tooltip:{enabled:false}, legend:{display:false} }
         }
-        
-        // Chuẩn bị dữ liệu Excel (dataLog đã được tải từ Google Sheet)
-        const excelData = dataLog.map(item => ({
-            'Thời gian': item.timestamp,
-            'Địa điểm': item.location,
-            'Nhiệt độ (°C)': item.temp,
-            'Độ ẩm (%)': item.humid,
-            'PM2.5 (µg/m³)': item.pm25,
-            'Khí Gas (PPM)': item.gas
-        }));
-        
-        let ws = XLSX.utils.json_to_sheet(excelData);
-        let wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, `Data Log ${currentLocation}`);
-        XLSX.writeFile(wb,`sensor_log_${currentLocation}_${new Date().toISOString().slice(0, 10)}.xlsx`);
-        console.log(`Xuất thành công ${dataLog.length} dòng dữ liệu cho ${currentLocation}.`);
-    };
+    });
+}
+function createLine(ctx, label, color){
+    return new Chart(ctx,{
+        type:'line',
+        data:{ labels:[], datasets:[{ label, data:[], borderColor:color, tension:0.4, pointRadius:3, pointBackgroundColor:color, fill:false }] },
+        options:{
+            responsive:true, maintainAspectRatio:false,
+            scales:{ x:{grid:{display:false}}, y:{beginAtZero:true} },
+            plugins:{ legend:{display:false} }
+        }
+    });
+}
 
-    // Khởi chạy khi tải trang
-    window.onload = startRefreshTimer;
+// ====== KHỞI TẠO BIỂU ĐỒ CHO TỪNG ĐỊA ĐIỂM ======
+function initAllCharts(){
+    LOCATIONS.forEach(loc=>{
+        allCharts[loc] = {
+            temp: { gauge:createGauge(document.getElementById(`gauge-${loc}-temp`),50,chartColors.temp.primary), line:createLine(document.getElementById(`line-${loc}-temp`),'Nhiệt độ',chartColors.temp.primary), max:50, valueEl:document.getElementById(`value-${loc}-temp`), unit:'°C'},
+            humid:{ gauge:createGauge(document.getElementById(`gauge-${loc}-humid`),100,chartColors.humid.primary), line:createLine(document.getElementById(`line-${loc}-humid`),'Độ ẩm',chartColors.humid.primary), max:100, valueEl:document.getElementById(`value-${loc}-humid`), unit:'%'},
+            pm25:{ gauge:createGauge(document.getElementById(`gauge-${loc}-pm25`),300,chartColors.pm25.primary), line:createLine(document.getElementById(`line-${loc}-pm25`),'PM2.5',chartColors.pm25.primary), max:300, valueEl:document.getElementById(`value-${loc}-pm25`), unit:'µg/m³'},
+            gas:{ gauge:createGauge(document.getElementById(`gauge-${loc}-gas`),1000,chartColors.gas.primary), line:createLine(document.getElementById(`line-${loc}-gas`),'Khí Gas',chartColors.gas.primary), max:1000, valueEl:document.getElementById(`value-${loc}-gas`), unit:'PPM'}
+        };
+    });
+}
 
-    console.log("Dashboard đã sẵn sàng. Dữ liệu đang được tải từ Google Sheets và tự động làm mới.");
+// ====== CẬP NHẬT DỮ LIỆU ======
+function updateCharts(locationId, records){
+    dataLogAll[locationId] = records;
+    const lineData = { temp:[], humid:[], pm25:[], gas:[], timestamps:[] };
+    records.forEach(r=>{
+        const t = new Date(r.timestamp);
+        const timeStr = !isNaN(t) ? t.toLocaleTimeString('vi-VN',{hour12:false}) : r.timestamp;
+        lineData.timestamps.push(timeStr);
+        lineData.temp.push(parseFloat(r.temp));
+        lineData.humid.push(parseFloat(r.humid));
+        lineData.pm25.push(parseFloat(r.pm25));
+        lineData.gas.push(parseFloat(r.gas));
+    });
+    const charts = allCharts[locationId];
+    for (const k in charts){
+        charts[k].line.data.labels = lineData.timestamps;
+        charts[k].line.data.datasets[0].data = lineData[k];
+        charts[k].line.update();
+    }
+    const latest = records[records.length-1];
+    if (latest){
+        for (const k in charts){
+            const val = parseFloat(latest[k]).toFixed(1);
+            charts[k].gauge.data.datasets[0].data = [val, charts[k].max - val];
+            charts[k].gauge.update();
+            charts[k].valueEl.innerText = `${val}${charts[k].unit}`;
+        }
+    }
+}
+
+function setStatus(status, msg){
+    const el=document.getElementById('status');
+    const colors={success:"bg-green-100 text-green-700 border-green-300",loading:"bg-yellow-100 text-yellow-700 border-yellow-300",error:"bg-red-100 text-red-700 border-red-300"};
+    el.className=`text-center mb-8 p-3 rounded-lg font-medium shadow-md border ${colors[status]||colors.loading}`;
+    el.innerText=msg;
+}
+
+// ====== FETCH DỮ LIỆU ======
+async function fetchDataFromSheets(locationId){
+    try{
+        const res=await fetch(`${GOOGLE_SHEET_WEB_APP_URL}?location=${locationId}`);
+        const result=await res.json();
+        if(result.result==="success"){
+            updateCharts(locationId,result.data);
+            setStatus("success",`🟢 Đã cập nhật ${locationId} lúc ${new Date().toLocaleTimeString('vi-VN',{hour12:false})}`);
+        }else{
+            console.error(result.message);
+            setStatus("error",`🔴 Lỗi tải dữ liệu ${locationId}`);
+        }
+    }catch(e){
+        console.error(e);
+        setStatus("error",`🔴 Không kết nối được Sheets (${locationId})`);
+    }
+}
+
+// ====== CHU KỲ LÀM MỚI ======
+function startAutoRefresh(){
+    const loadAll=()=>LOCATIONS.forEach(loc=>fetchDataFromSheets(loc));
+    loadAll();
+    setInterval(loadAll, REFRESH_INTERVAL_SECONDS*1000);
+}
+
+// ====== XUẤT EXCEL ======
+document.getElementById('export').onclick=function(){
+    let allData=[];
+    for(const loc of LOCATIONS){
+        const data=dataLogAll[loc]||[];
+        allData=allData.concat(data.map(d=>({
+            'Địa điểm':loc,
+            'Thời gian':d.timestamp,
+            'Nhiệt độ (°C)':d.temp,
+            'Độ ẩm (%)':d.humid,
+            'PM2.5 (µg/m³)':d.pm25,
+            'Khí Gas (PPM)':d.gas
+        })));
+    }
+    if(allData.length===0)return alert("Chưa có dữ liệu để xuất Excel!");
+    const ws=XLSX.utils.json_to_sheet(allData);
+    const wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,ws,'Tổng hợp');
+    XLSX.writeFile(wb,`sensor_log_all_${new Date().toISOString().slice(0,10)}.xlsx`);
+};
+
+// ====== KHỞI ĐỘNG ======
+window.onload=()=>{
+    renderDashboard();
+    initAllCharts();
+    startAutoRefresh();
+};
 </script>
-
 </body>
 </html>
