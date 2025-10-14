@@ -28,6 +28,12 @@
             display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
             gap: 20px;
         }
+        #status {
+            display: flex;
+            justify-content: space-around; /* dàn đều 3 cụm */
+            align-items: center;
+            gap: 20px; /* khoảng cách giữa các cụm */
+        }
     </style>
 </head>
 <body class="font-sans min-h-screen p-4 md:p-8 bg-slate-100">
@@ -51,8 +57,8 @@ const GOOGLE_SHEET_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwhTF9
 const REFRESH_INTERVAL_SECONDS = 3;
 const LOCATIONS = ['A101', 'B202', 'C303'];
 
-let dataLogAll = {}; // lưu log riêng cho từng địa điểm
-let allCharts = {};  // lưu biểu đồ của từng địa điểm
+let dataLogAll = {}; 
+let allCharts = {};  
 
 const chartColors = {
     temp: { primary: '#ef4444', text: '#dc2626' },
@@ -61,7 +67,25 @@ const chartColors = {
     gas: { primary: '#c026d3', text: '#a21caf' }
 };
 
-// ====== KHỞI TẠO HTML CHO MỖI ĐỊA ĐIỂM ======
+// ====== LƯU THỜI GIAN CẬP NHẬT ======
+const updateTimes = {
+    A101: "--:--:--",
+    B202: "--:--:--",
+    C303: "--:--:--"
+};
+
+// ====== CẬP NHẬT DÒNG TRẠNG THÁI ======
+function updateStatusLine() {
+    const el = document.getElementById('status');
+    el.className = "text-center mb-8 p-3 rounded-lg font-medium shadow-md border bg-green-100 text-green-700 border-green-300";
+    el.innerHTML = `
+        <span>🟢 A101: ${updateTimes.A101}</span>
+        <span>🟢 B202: ${updateTimes.B202}</span>
+        <span>🟢 C303: ${updateTimes.C303}</span>
+    `;
+}
+
+// ====== KHỞI TẠO DASHBOARD ======
 function renderDashboard() {
     const dash = document.getElementById('dashboard');
     dash.innerHTML = '';
@@ -96,7 +120,7 @@ function createCardHTML(loc, id, label, unit, textColor) {
     </div>`;
 }
 
-// ====== TẠO BIỂU ĐỒ ======
+// ====== BIỂU ĐỒ ======
 function createGauge(ctx, max, color){
     return new Chart(ctx, {
         type: 'doughnut',
@@ -120,7 +144,7 @@ function createLine(ctx, label, color){
     });
 }
 
-// ====== KHỞI TẠO BIỂU ĐỒ CHO TỪNG ĐỊA ĐIỂM ======
+// ====== KHỞI TẠO BIỂU ĐỒ ======
 function initAllCharts(){
     LOCATIONS.forEach(loc=>{
         allCharts[loc] = {
@@ -162,13 +186,6 @@ function updateCharts(locationId, records){
     }
 }
 
-function setStatus(status, msg){
-    const el=document.getElementById('status');
-    const colors={success:"bg-green-100 text-green-700 border-green-300",loading:"bg-yellow-100 text-yellow-700 border-yellow-300",error:"bg-red-100 text-red-700 border-red-300"};
-    el.className=`text-center mb-8 p-3 rounded-lg font-medium shadow-md border ${colors[status]||colors.loading}`;
-    el.innerText=msg;
-}
-
 // ====== FETCH DỮ LIỆU ======
 async function fetchDataFromSheets(locationId){
     try{
@@ -176,14 +193,13 @@ async function fetchDataFromSheets(locationId){
         const result=await res.json();
         if(result.result==="success"){
             updateCharts(locationId,result.data);
-            setStatus("success",`🟢 Đã cập nhật ${locationId} lúc ${new Date().toLocaleTimeString('vi-VN',{hour12:false})}`);
+            updateTimes[locationId] = new Date().toLocaleTimeString('vi-VN',{hour12:false});
+            updateStatusLine();
         }else{
             console.error(result.message);
-            setStatus("error",`🔴 Lỗi tải dữ liệu ${locationId}`);
         }
     }catch(e){
         console.error(e);
-        setStatus("error",`🔴 Không kết nối được Sheets (${locationId})`);
     }
 }
 
@@ -219,6 +235,7 @@ document.getElementById('export').onclick=function(){
 window.onload=()=>{
     renderDashboard();
     initAllCharts();
+    updateStatusLine();
     startAutoRefresh();
 };
 </script>
