@@ -34,7 +34,7 @@ float MP25::_readRawADC() {
 float MP25::readDustDensity() {
     float adc_avg = _readRawADC();
     float Vo = (adc_avg / 4095.0) * 3.3;
-    float dustDensity = (Vo - 0.9) * 1000 / 0.5 + _offset; // µg/m³
+    float dustDensity = (Vo - 0.6) * 1000 / 0.5 + _offset; // µg/m³
     if (dustDensity < 0) dustDensity = 0;
     return dustDensity;
 }

@@ -19,7 +19,7 @@ const char* scriptURL = "https://script.google.com/macros/s/AKfycbwhTF9oBVzyj8QJ
 
 // Pin Definitions
 #define PIN_MQ2       34
-#define PIN_DHT       4
+#define PIN_DHT       21
 #define PIN_PM_LED    23
 #define PIN_PM_ADC    32
 
