@@ -5,6 +5,7 @@
 #include <stdlib.h>
 
 // Server and Payload Format Headers
+#include <WiFi.h>
 #include <server.h>
 #include <payload_format.h>
 

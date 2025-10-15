@@ -1,5 +1,8 @@
 #include "all_header.h"
 
+// #define TEST 
+
+#ifndef TEST
 MQ2   mq2(PIN_MQ2, 10.0, 5.0);
 DHT11 dht(PIN_DHT);
 MP25  dust(PIN_PM_LED, PIN_PM_ADC, 5.0);
@@ -28,6 +31,10 @@ void setup() {
   Serial.printf("Free heap: %d bytes\n", ESP.getFreeHeap());
   Serial.println("========================================\n");
 
+  // Bật WiFi Modem Sleep để tiết kiệm năng lượng
+  WiFi.setSleep(true);
+  Serial.println("WiFi Modem Sleep: ENABLED (Power saving mode)\n");
+  
   // Kết nối WiFi và khởi tạo server
   Server.begin(scriptURL);
   
@@ -35,50 +42,24 @@ void setup() {
   mq2.begin(10.0);         // Ro hiệu chuẩn (kΩ)
   dust.begin(10, -15.0);   // 10 mẫu, offset -15 µg/m³
 
-  xTaskCreatePinnedToCore(SendHTTPTTask, "SendHTTPTTask", 10000, NULL, SEND_HTTP_PRIORITY, &SendHTTPHandle, 1);
-  xTaskCreatePinnedToCore(CheckUpdateFirmwareTask, "CheckUpdateFirmwareTask", 10000, NULL, CHECK_UPDATE_PRIORITY, &CheckUpdateHandle, 1);
+  xTaskCreatePinnedToCore(SendHTTPTTask, "SendHTTPTask", 10000, NULL, SEND_HTTP_PRIORITY, &SendHTTPHandle, 0);
+  xTaskCreatePinnedToCore(CheckUpdateFirmwareTask, "CheckMQTTTask", 10000, NULL, CHECK_UPDATE_PRIORITY, &CheckUpdateHandle, 1);
 }
 
 
 void loop() 
 {
-  if(Serial.available()) 
-  {
-    String str = Serial.readStringUntil('\n');
-    str.trim();
-    if(str.equalsIgnoreCase("change wifi")) 
-    {
-      if (eTaskGetState(SendHTTPHandle) != eSuspended) 
-      {
-        vTaskSuspend(SendHTTPHandle);
-      }
-      if(eTaskGetState(CheckUpdateHandle) != eSuspended) 
-      {
-        vTaskSuspend(CheckUpdateHandle);
-      }
 
-      // Thay đổi WiFi
-      while(1)
-      {
-        Server.ChangeWiFiInfo();
-        Server.ReconnectWiFi();
-        if (Server.IsWiFiConnected()) {
-          vTaskResume(SendHTTPHandle);
-          vTaskResume(CheckUpdateHandle);
-          break;
-        }
-      }
-    }
-  }
 }
 
 
 void SendHTTPTTask(void *parameter) {
   TickType_t xLastWakeTime;
-  const TickType_t xFrequency = 5000 / portTICK_PERIOD_MS; // 5000 ms
+  const TickType_t xFrequency = 5000 / portTICK_PERIOD_MS; // 600000 ms = 10 phút
 
   // Khởi tạo thời điểm ban đầu
   xLastWakeTime = xTaskGetTickCount();
+  
   for(;;) {
     // --- Đọc cảm biến khí gas ---
     float ppm = mq2.readPPM();
@@ -93,10 +74,8 @@ void SendHTTPTTask(void *parameter) {
     String payload = PayloadFormat(dht11_value.temperature, dht11_value.humidity, dustDensity, ppm);
 
     Server.sendData(payload);
-
-    Serial.println("Payload: " + payload);
-
-    vTaskDelayUntil(&xLastWakeTime, xFrequency); // Đọc mỗi 5 giây
+    
+    vTaskDelayUntil(&xLastWakeTime, xFrequency);
   }
 }
 
@@ -117,3 +96,20 @@ void CheckUpdateFirmwareTask(void *parameter) {
     vTaskDelay(10 / portTICK_PERIOD_MS);  // Delay 10ms sau mỗi batch
   }
 }
+
+#else
+#include <WiFi.h>
+#include <WebServer.h>
+#include <Preferences.h>
+#include "wifi_config_page.h"
+
+void setup() {
+  Serial.begin(115200);
+  connectToWiFi();
+}
+
+void loop() {
+  server.handleClient();
+}
+
+#endif

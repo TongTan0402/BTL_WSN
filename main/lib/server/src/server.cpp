@@ -4,10 +4,11 @@
 #include <WiFiClientSecure.h>
 #include <PubSubClient.h>
 #include <Update.h>
-#include <Preferences.h>  // Dùng để lưu vào flash
 #include "device_id.h"
 #include <iostream>
 #include <sstream>
+
+#include "wifi_config.h"
 
 
 // Private Variables
@@ -16,23 +17,22 @@ WiFiClientSecure client_secure;
 
 // Global Server Object
 Server_c Server;
-Preferences prefs;
 
-char ssid[50];
-char password[50];
 const char* mqtt_server = "test.mosquitto.org";
 const char* firmware_url = "https://raw.githubusercontent.com/TongTan0402/firmware_esp32_ota/main/firmware.bin";
 String device_topic = "ota/";
 String update_topic = "";
+String config_wifi_topic = "";
 
 bool update_firmware = false;
+bool config_wifi = false;
 unsigned long lastReconnectAttempt = 0;  // Thời gian lần cuối thử reconnect
 
 WiFiClient espClient;
 PubSubClient client(espClient);
 
-void Server_c::OtaUpdate() {
-  
+void Server_c::OtaUpdate() 
+{
   HTTPClient http;
   http.begin(firmware_url);
 
@@ -75,8 +75,7 @@ void Server_c::OtaUpdate() {
       
       if (update_firmware) {
         // Xóa retained message bằng cách publish empty message
-        client.publish(update_topic.c_str(), "", true);
-        Serial.println("Đã xóa retained message");
+        client.publish(update_topic.c_str(), "false", true);
         delay(500);
       }
       
@@ -109,13 +108,20 @@ void MQTT_Callback(char* topic, byte* payload, unsigned int length) {
   String msg = (char*)payload;
   Serial.printf("Nhận từ topic %s: %s\n", topic, msg.c_str());
   
-  if(String(topic) == update_topic)
+  if (msg == "true") 
   {
-    if (msg == "update") 
+    if(String(topic) == update_topic)
     {
       Serial.println("Đã nhận lệnh UPDATE!");
       
       update_firmware = true;
+    }
+
+    if(String(topic) == config_wifi_topic)
+    {
+      Serial.println("Đã nhận lệnh CONFIG_WIFI!");
+
+      config_wifi = true;
     }
   }
 }
@@ -149,27 +155,11 @@ void MQTT_Reconnect() {
 void WiFi_MQTT_Init() {
   device_topic += GetDeviceId();
   update_topic = device_topic + "/update_firmware";
-
+  config_wifi_topic = device_topic + "/config_wifi";
 
   Serial.println("\nDevice ID: " + GetDeviceId() + "\n");
 
-  prefs.begin("wifi", false); // namespace: "wifi"
-
-  // Đọc SSID và password từ flash
-  String ssid_saved = prefs.getString("ssid", "");
-  String pass_saved = prefs.getString("password", "");
-
-  if (ssid_saved.length() > 0) {
-    ssid_saved.toCharArray(ssid, sizeof(ssid));
-    pass_saved.toCharArray(password, sizeof(password));
-    Serial.printf("Đọc từ flash: SSID=%s\n", ssid);
-  } else {
-    Serial.println("Chưa có SSID lưu trong flash.");
-    ssid[0] = '\0';
-    password[0] = '\0';
-  }
-  delay(2000);
-  Server.ReconnectWiFi();
+  ConnectToWiFi();
 
   client.setServer(mqtt_server, 1883);
   client.setCallback(MQTT_Callback);
@@ -180,93 +170,6 @@ void WiFi_MQTT_Init() {
 
 bool Server_c::IsWiFiConnected() {
   return WiFi.status() == WL_CONNECTED;
-}
-
-void Server_c::ReconnectWiFi() {
-  delay(1000);
-  // Reset WiFi nếu đang ở trạng thái lỗi
-  if (WiFi.status() == WL_CONNECT_FAILED || WiFi.status() == WL_CONNECTION_LOST) {
-    WiFi.disconnect(false);
-    delay(1000);
-  }
-  
-  WiFi.begin(ssid, password);
-
-  Serial.printf("Đang kết nối WiFi: %s ...\n", ssid);
-  Serial.printf("Password: %s\n", password);
-
-  unsigned long startAttemptTime = millis();
-
-  while (WiFi.status() != WL_CONNECTED && millis() - startAttemptTime < 10000) 
-  {
-    delay(500);
-    Serial.print(".");
-  }
-
-  if (WiFi.status() == WL_CONNECTED) 
-  {
-    Serial.println("\nWiFi reconnected!");
-    Serial.printf("IP address: %s\n", WiFi.localIP().toString().c_str());
-    Serial.printf("SSID: %s\n", ssid);
-    Serial.printf("Password: %s\n", password);
-  } 
-  else 
-  {
-    Serial.println("\nKhông thể reconnect WiFi!");
-  }
-}
-
-// ---- Hàm nhập và lưu WiFi ----
-void Server_c::ChangeWiFiInfo() {
-  Serial.println("\nKhông kết nối được WiFi!");
-  
-  // --- Nhập SSID ---
-  Serial.println("Nhập SSID: ");
-  String s = "";
-  while (s.length() == 0) {
-    if (Serial.available()) {
-      s = Serial.readStringUntil('\n');
-      s.trim();
-    }
-  }
-
-  // --- Nhập Password ---
-  Serial.println("Nhập Password: ");
-  String p = "";
-  while (1) {
-    if (Serial.available()) {
-      p = Serial.readStringUntil('\n');
-      p.trim();
-      break;
-    }
-  }
-
-  // --- Xác nhận ---
-  Serial.println("\n--- Xác nhận thông tin ---");
-  Serial.printf("SSID: %s\n", s.c_str());
-  Serial.printf("Password: %s\n", p.c_str());
-  Serial.println("Nhập 'y' để xác nhận, hoặc phím khác để nhập lại:");
-
-  while (!Serial.available()); // chờ người dùng nhập
-  char confirm = Serial.read();
-  Serial.readStringUntil('\n'); // xóa phần dư trong buffer
-
-  if (confirm != 'y' && confirm != 'Y') {
-    Serial.println("Hủy lưu. Nhập lại thông tin...");
-    delay(500);
-    ChangeWiFiInfo(); // gọi lại hàm để nhập lại
-    return;
-  }
-
-  // --- Lưu và kết nối ---
-  s.toCharArray(ssid, sizeof(ssid));
-  p.toCharArray(password, sizeof(password));
-
-  prefs.putString("ssid", ssid);
-  prefs.putString("password", password);
-
-  Serial.println("Đã lưu SSID và Password vào flash!");
-  Serial.printf("Đang thử kết nối WiFi: %s...\n", ssid);
 }
 
 void Server_c::MQTTLoop() {
@@ -280,6 +183,16 @@ void Server_c::MQTTLoop() {
   } else {
     // Nếu đã kết nối, gọi loop() để xử lý message
     client.loop();
+
+    if(config_wifi)
+    {
+      config_wifi = false;
+      client.publish(config_wifi_topic.c_str(), "false", true);
+      delay(500);
+      Set_Wifi_Infor_To_Flash("", "");
+      ESP.restart();  
+      while(true) { delay(1000); }  // Đợi ESP restart
+    }
   }
 }
 
@@ -304,6 +217,12 @@ void Server_c::sendData(String payload)
     Serial.print("HTTP Response: ");
     Serial.println(httpResponseCode);
     http.end();
+    if(httpResponseCode == 302) {
+      Serial.println("Dữ liệu đã gửi thành công!");
+      Serial.println("Payload sent: " + payload + "\n");
+    } else {
+      Serial.println("Lỗi khi gửi dữ liệu!");
+    }
   }
 }
 

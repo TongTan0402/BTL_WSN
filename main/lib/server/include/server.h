@@ -13,8 +13,9 @@ class Server_c
     void sendData(String payload);
     void MQTTLoop();
     bool CheckUpdate();
-    void ChangeWiFiInfo();
-    void ReconnectWiFi();
+
+    void SaveWifi(char *new_ssid, char *new_password);
+
     bool IsWiFiConnected();
     void OtaUpdate();
 };
