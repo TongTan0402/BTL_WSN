@@ -129,7 +129,7 @@ void ConnectToWiFi() {
       else 
       {
         // Không có client -> delay lâu hơn để tiết kiệm năng lượng
-        delay(500);
+        delay(1000);
       }
     }
   }
