@@ -4,6 +4,7 @@
 #include <WiFi.h>
 #include <WebServer.h>
 #include <Preferences.h>
+#include <ESPmDNS.h>
 #include "wifi_config_page.h"
 
 void Set_Wifi_Infor_To_Flash(String ssid, String pass);

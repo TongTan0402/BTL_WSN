@@ -208,7 +208,7 @@ input[type="password"]:focus {
         <div class="form-group">
             <label for="pass">Mật khẩu</label>
             <div class="input-icon pass-input">
-                <input type="password" id="pass" name="pass" placeholder="Nhập mật khẩu WiFi" required>
+                <input type="password" id="pass" name="pass" placeholder="Nhập mật khẩu WiFi">
                 <button type="button" class="toggle-password" onclick="togglePassword()">Hiện</button>
             </div>
         </div>

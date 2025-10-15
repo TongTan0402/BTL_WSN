@@ -13,8 +13,8 @@ devices = ["A101", "B202", "C303", "D404"]
 
 print("Đang kết nối MQTT...")
 
-# Tạo client và kết nối
-client = mqtt.Client()
+# Tạo client với API version mới (CallbackAPIVersion.VERSION2)
+client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
 client.connect(broker, port, 60)
 
 print("Gửi lệnh update tới các devices...")
@@ -22,7 +22,7 @@ print("Gửi lệnh update tới các devices...")
 # Gửi message tới từng device
 for device in devices:
     topic = f"ota/{device}/update_firmware"
-    client.publish(topic, "update", qos=1, retain=True)
+    client.publish(topic, "true", qos=1, retain=True)
     print(f"Đã gửi lệnh update tới {device}")
 
 print("Hoàn thành!")

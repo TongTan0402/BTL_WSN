@@ -62,13 +62,17 @@ void StartAPMode() {
   
   WiFi.softAP(ap_ssid.c_str(), "12345678");
 
-  Serial.println("Đang phát WiFi cấu hình: " + ap_ssid);
-  Serial.print("IP: ");
-  Serial.println(WiFi.softAPIP());
-  Serial.printf("Gateway: %s\n", gateway.toString().c_str());
-  Serial.printf("Subnet: %s\n", subnet.toString().c_str());
-  Serial.println("Truy cập: http://" + WiFi.softAPIP().toString());
-  
+  // Thiết lập mDNS - Truy cập bằng tên miền thay vì IP
+  const char* mdns_name = "wificonfig"; // Tên mDNS tùy chỉnh
+
+  if (MDNS.begin(mdns_name)) {
+    Serial.println("mDNS đã khởi động!");
+    Serial.println("Truy cập qua: http://" + String(mdns_name) + ".local");
+    MDNS.addService("http", "tcp", 80);
+  } else {
+    Serial.println("Lỗi khởi động mDNS");
+  }
+
   server.on("/", HandleRoot);
   server.on("/save", HandleSave);
   server.begin();
@@ -111,10 +115,22 @@ void ConnectToWiFi() {
     StartAPMode();
     
     // Vòng lặp xử lý web server trong AP mode
-    Serial.println("Web server đang chạy - Chờ cấu hình WiFi...");
+    Serial.println("AP mode đang chạy - Chờ thiết bị kết nối...");
+    
     while(1) {
-      server.handleClient();
-      delay(10); // Delay nhỏ để giảm CPU usage
+      int clientCount = WiFi.softAPgetStationNum();
+      
+      if (clientCount > 0) 
+      {
+        // Chỉ xử lý web server khi có client
+        server.handleClient();
+        delay(10);
+      } 
+      else 
+      {
+        // Không có client -> delay lâu hơn để tiết kiệm năng lượng
+        delay(500);
+      }
     }
   }
 }

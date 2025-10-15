@@ -55,7 +55,7 @@ void loop()
 
 void SendHTTPTTask(void *parameter) {
   TickType_t xLastWakeTime;
-  const TickType_t xFrequency = 5000 / portTICK_PERIOD_MS; // 600000 ms = 10 phút
+  const TickType_t xFrequency = 10000 / portTICK_PERIOD_MS; // 10000 ms = 10 giây
 
   // Khởi tạo thời điểm ban đầu
   xLastWakeTime = xTaskGetTickCount();
@@ -93,7 +93,7 @@ void CheckUpdateFirmwareTask(void *parameter) {
       Serial.println("Bắt đầu cập nhật firmware...");
       Server.OtaUpdate();
     }
-    vTaskDelay(10 / portTICK_PERIOD_MS);  // Delay 10ms sau mỗi batch
+    vTaskDelay(100 / portTICK_PERIOD_MS);  // Delay 100ms sau mỗi batch
   }
 }
 

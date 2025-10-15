@@ -22,10 +22,10 @@ const char* mqtt_server = "test.mosquitto.org";
 const char* firmware_url = "https://raw.githubusercontent.com/TongTan0402/firmware_esp32_ota/main/firmware.bin";
 String device_topic = "ota/";
 String update_topic = "";
-String config_wifi_topic = "";
+String wifi_config_topic = "";
 
 bool update_firmware = false;
-bool config_wifi = false;
+bool wifi_config = false;
 unsigned long lastReconnectAttempt = 0;  // Thời gian lần cuối thử reconnect
 
 WiFiClient espClient;
@@ -117,11 +117,11 @@ void MQTT_Callback(char* topic, byte* payload, unsigned int length) {
       update_firmware = true;
     }
 
-    if(String(topic) == config_wifi_topic)
+    if(String(topic) == wifi_config_topic)
     {
-      Serial.println("Đã nhận lệnh CONFIG_WIFI!");
+      Serial.println("Đã nhận lệnh WIFI_CONFIG!");
 
-      config_wifi = true;
+      wifi_config = true;
     }
   }
 }
@@ -155,7 +155,7 @@ void MQTT_Reconnect() {
 void WiFi_MQTT_Init() {
   device_topic += GetDeviceId();
   update_topic = device_topic + "/update_firmware";
-  config_wifi_topic = device_topic + "/config_wifi";
+  wifi_config_topic = device_topic + "/wifi_config";
 
   Serial.println("\nDevice ID: " + GetDeviceId() + "\n");
 
@@ -184,10 +184,10 @@ void Server_c::MQTTLoop() {
     // Nếu đã kết nối, gọi loop() để xử lý message
     client.loop();
 
-    if(config_wifi)
+    if(wifi_config)
     {
-      config_wifi = false;
-      client.publish(config_wifi_topic.c_str(), "false", true);
+      wifi_config = false;
+      client.publish(wifi_config_topic.c_str(), "false", true);
       delay(500);
       Set_Wifi_Infor_To_Flash("", "");
       ESP.restart();  
