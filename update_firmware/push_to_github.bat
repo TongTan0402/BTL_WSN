@@ -35,7 +35,7 @@ if exist "firmware\firmware.bin" (
 timeout /t 1 >nul
 
 echo Copying firmware.bin from build directory...
-copy "..\.pio\build\esp32dev\firmware.bin" "firmware\firmware.bin" 
+copy "..\.pio\build\esp32dev\firmware.bin" "firmware\" 
 if %ERRORLEVEL% NEQ 0 (
     echo Error: Failed to copy firmware.bin
     echo Please make sure the project is built first: pio run
