@@ -180,7 +180,8 @@ void Server_c::MQTTLoop() {
       lastReconnectAttempt = now;
       MQTT_Reconnect();
     }
-  } else {
+  } 
+  else {
     // Nếu đã kết nối, gọi loop() để xử lý message
     client.loop();
 

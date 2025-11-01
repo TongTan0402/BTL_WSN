@@ -55,7 +55,7 @@ void loop()
 
 void SendHTTPTTask(void *parameter) {
   TickType_t xLastWakeTime;
-  const TickType_t xFrequency = 5000 / portTICK_PERIOD_MS; // 10000 ms = 10 giây
+  const TickType_t xFrequency = 600000 / portTICK_PERIOD_MS; // 600000 ms = 10 phút
 
   // Khởi tạo thời điểm ban đầu
   xLastWakeTime = xTaskGetTickCount();

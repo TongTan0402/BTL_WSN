@@ -86,7 +86,7 @@ void ConnectToWiFi() {
     Serial.printf("Pass: %s\n", pass.c_str());
     WiFi.begin(ssid.c_str(), pass.c_str());
     unsigned long start = millis();
-    while (WiFi.status() != WL_CONNECTED && millis() - start < 10000) {
+    while (WiFi.status() != WL_CONNECTED && millis() - start < 30000) {
       delay(500);
       Serial.print(".");
     }
@@ -117,7 +117,10 @@ void ConnectToWiFi() {
     // Vòng lặp xử lý web server trong AP mode
     Serial.println("AP mode đang chạy - Chờ thiết bị kết nối...");
     
-    while(1) {
+    uint32_t apStartTime = millis();
+    const uint32_t apTimeout = 300000; // 5 phút
+    while(millis() - apStartTime < apTimeout) 
+    {
       int clientCount = WiFi.softAPgetStationNum();
       
       if (clientCount > 0) 
@@ -131,6 +134,13 @@ void ConnectToWiFi() {
         // Không có client -> delay lâu hơn để tiết kiệm năng lượng
         delay(1000);
       }
+    }
+
+    if(millis() - apStartTime >= apTimeout) 
+    {
+      Serial.println("AP mode hết thời gian chờ. Khởi động lại...");
+      ESP.restart();
+      while(true) { delay(1000); }  // Đợi ESP restart
     }
   }
 }
