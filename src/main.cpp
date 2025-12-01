@@ -41,7 +41,7 @@ void setup() {
   // Khởi tạo cảm biến
   mq2.begin(10.0);         // Ro hiệu chuẩn (kΩ)
   dust.begin(10, -15.0);   // 10 mẫu, offset -15 µg/m³
-
+  dust.autoCalibrate(100);
   xTaskCreatePinnedToCore(SendHTTPTTask, "SendHTTPTask", 10000, NULL, SEND_HTTP_PRIORITY, &SendHTTPHandle, 0);
   xTaskCreatePinnedToCore(CheckUpdateFirmwareTask, "CheckMQTTTask", 10000, NULL, CHECK_UPDATE_PRIORITY, &CheckUpdateHandle, 1);
 }
