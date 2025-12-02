@@ -5,13 +5,16 @@
 #ifndef TEST
 MQ2   mq2(PIN_MQ2, 10.0, 5.0);
 DHT11 dht(PIN_DHT);
-MP25  dust(PIN_PM_LED, PIN_PM_ADC, 5.0);
+MP25  dust(PIN_PM_LED, PIN_PM_ADC, 3.3);
 
 enum {
   IDLE_PRIORITY = 0,
-  READ_SENSORS_PRIORITY,
+
   SEND_HTTP_PRIORITY ,
-  CHECK_UPDATE_PRIORITY
+  CHECK_UPDATE_PRIORITY,
+  READ_SENSORS_PRIORITY,
+
+  PRIORITY_COUNT
 };
 
 TaskHandle_t ReadSensorsHandle; // handle của task đọc cảm biến
@@ -53,14 +56,14 @@ void setup() {
   
   // Khởi tạo cảm biến
   mq2.begin(10.0);         // Ro hiệu chuẩn (kΩ)
-  dust.begin(10, -15.0);   // 10 mẫu, offset -15 µg/m³
+  dust.begin(30, 0);   // 10 mẫu, offset -15 µg/m³
   dust.autoCalibrate(100);
   
   // Tạo mutex
   sensorMutex = xSemaphoreCreateMutex();
   
   // Tạo các task
-  xTaskCreatePinnedToCore(ReadSensorsTask, "ReadSensorsTask", 8192, NULL, READ_SENSORS_PRIORITY, &ReadSensorsHandle, 0);
+  xTaskCreatePinnedToCore(ReadSensorsTask, "ReadSensorsTask", 4096, NULL, READ_SENSORS_PRIORITY, &ReadSensorsHandle, 0);
   xTaskCreatePinnedToCore(SendHTTPTTask, "SendHTTPTask", 10000, NULL, SEND_HTTP_PRIORITY, &SendHTTPHandle, 0);
   xTaskCreatePinnedToCore(CheckUpdateFirmwareTask, "CheckMQTTTask", 10000, NULL, CHECK_UPDATE_PRIORITY, &CheckUpdateHandle, 1);
 }
@@ -100,14 +103,14 @@ void ReadSensorsTask(void *parameter) {
       xSemaphoreGive(sensorMutex);
     }
 
-    // Serial.printf("Temp: %.1f°C, Humidity: %.1f%%, Dust: %.1f µg/m³, Gas: %.1f ppm\n",
-    //               dht11_value.temperature, dht11_value.humidity, dustDensity, ppm);
+    Serial.printf("Temp: %.1f°C, Humidity: %.1f%%, Dust: %.1f µg/m³, Gas: %.1f ppm\n",
+                  dht11_value.temperature, dht11_value.humidity, dustDensity, ppm);
   }
 }
 
 void SendHTTPTTask(void *parameter) {
   TickType_t xLastWakeTime;
-  const TickType_t xFrequency = 600000 / portTICK_PERIOD_MS; // 600000 ms = 10 phút
+  const TickType_t xFrequency = 6000 / portTICK_PERIOD_MS; // 600000 ms = 10 phút
 
   // Khởi tạo thời điểm ban đầu
   xLastWakeTime = xTaskGetTickCount();
