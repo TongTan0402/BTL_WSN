@@ -37,6 +37,9 @@ void ReadSensorsTask(void *parameter);
 void SendHTTPTTask(void *parameter);
 void CheckUpdateFirmwareTask(void *parameter);
 
+
+
+
 void setup() {
   Serial.begin(115200);
   delay(1000);
@@ -57,7 +60,10 @@ void setup() {
   // Khởi tạo cảm biến
   mq2.begin(10.0);         // Ro hiệu chuẩn (kΩ)
   dust.begin(30, 0);   // 10 mẫu, offset -15 µg/m³
-  dust.autoCalibrate(100);
+  dust.autoCalibrate(120, 20);
+  float voc = dust.getVoc();
+  dust.setVoc(voc);
+  //dust.autoCalibrate(100);
   
   // Tạo mutex
   sensorMutex = xSemaphoreCreateMutex();
@@ -103,8 +109,8 @@ void ReadSensorsTask(void *parameter) {
       xSemaphoreGive(sensorMutex);
     }
 
-    Serial.printf("Temp: %.1f°C, Humidity: %.1f%%, Dust: %.1f µg/m³, Gas: %.1f ppm\n",
-                  dht11_value.temperature, dht11_value.humidity, dustDensity, ppm);
+    //Serial.printf("Temp: %.1f°C, Humidity: %.1f%%, Dust: %.1f µg/m³, Gas: %.1f ppm\n",
+     //             dht11_value.temperature, dht11_value.humidity, dustDensity, ppm);
   }
 }
 

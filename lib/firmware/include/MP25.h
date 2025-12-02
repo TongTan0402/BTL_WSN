@@ -26,6 +26,9 @@ public:
 
     void calibrate(float offset); // set offset thủ công
     void setVoc(float voc);       // set Voc thủ công
+    float getVoc();
+    float getVo();
+    int getRaw();
 };
 
 #endif

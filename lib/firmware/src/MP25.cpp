@@ -46,7 +46,7 @@ float MP25::readDustDensity() {
     float Vo = (adc_avg / 4095.0f) * _Vcc;
 
     float dustDensity = (Vo - _Voc) * 200.0f + _offset; // µg/m³
-    // if (dustDensity < 0) dustDensity = 0;
+    if (dustDensity < 0) dustDensity = 0;
     return dustDensity;
 }
 
@@ -70,4 +70,12 @@ void MP25::autoCalibrate(int sampleCount, int delayMs) {
     // tính Voc trung bình
     float adc_avg = (float)sum / sampleCount;
     _Voc = (adc_avg / 4095.0f) * _Vcc;
+}
+float MP25::getVoc() { return _Voc; }
+float MP25::getVo() {
+    float adc = _readRawADC();
+    return (adc / 4095.0f) * _Vcc;
+}
+int MP25::getRaw() {
+    return (int)_readRawADC();
 }
