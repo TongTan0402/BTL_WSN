@@ -9,15 +9,28 @@ MP25  dust(PIN_PM_LED, PIN_PM_ADC, 5.0);
 
 enum {
   IDLE_PRIORITY = 0,
+  READ_SENSORS_PRIORITY,
   SEND_HTTP_PRIORITY ,
   CHECK_UPDATE_PRIORITY
 };
 
+TaskHandle_t ReadSensorsHandle; // handle của task đọc cảm biến
 TaskHandle_t SendHTTPHandle; // handle của task gửi HTTP
 TaskHandle_t CheckUpdateHandle; // handle của task kiểm tra cập nhật
 
+// Biến lưu dữ liệu cảm biến
+struct SensorData {
+  float temperature;
+  float humidity;
+  float dustDensity;
+  float ppm;
+} sensorData;
+
+SemaphoreHandle_t sensorMutex; // Mutex để bảo vệ dữ liệu cảm biến
+
 unsigned long last_time = 0; // thời gian lần thử reconnect WiFi cuối cùng
 
+void ReadSensorsTask(void *parameter);
 void SendHTTPTTask(void *parameter);
 void CheckUpdateFirmwareTask(void *parameter);
 
@@ -42,6 +55,12 @@ void setup() {
   mq2.begin(10.0);         // Ro hiệu chuẩn (kΩ)
   dust.begin(10, -15.0);   // 10 mẫu, offset -15 µg/m³
   dust.autoCalibrate(100);
+  
+  // Tạo mutex
+  sensorMutex = xSemaphoreCreateMutex();
+  
+  // Tạo các task
+  xTaskCreatePinnedToCore(ReadSensorsTask, "ReadSensorsTask", 8192, NULL, READ_SENSORS_PRIORITY, &ReadSensorsHandle, 0);
   xTaskCreatePinnedToCore(SendHTTPTTask, "SendHTTPTask", 10000, NULL, SEND_HTTP_PRIORITY, &SendHTTPHandle, 0);
   xTaskCreatePinnedToCore(CheckUpdateFirmwareTask, "CheckMQTTTask", 10000, NULL, CHECK_UPDATE_PRIORITY, &CheckUpdateHandle, 1);
 }
@@ -53,14 +72,16 @@ void loop()
 }
 
 
-void SendHTTPTTask(void *parameter) {
+void ReadSensorsTask(void *parameter) {
   TickType_t xLastWakeTime;
-  const TickType_t xFrequency = 600000 / portTICK_PERIOD_MS; // 600000 ms = 10 phút
+  const TickType_t xFrequency = 1000 / portTICK_PERIOD_MS; // 1000 ms = 1 giây
 
   // Khởi tạo thời điểm ban đầu
   xLastWakeTime = xTaskGetTickCount();
   
   for(;;) {
+    vTaskDelayUntil(&xLastWakeTime, xFrequency);
+
     // --- Đọc cảm biến khí gas ---
     float ppm = mq2.readPPM();
 
@@ -70,12 +91,43 @@ void SendHTTPTTask(void *parameter) {
     // --- Đọc cảm biến nhiệt độ & độ ẩm ---
     auto dht11_value = dht.read();
 
-    // --- Gửi dữ liệu lên server ---
-    String payload = PayloadFormat(dht11_value.temperature, dht11_value.humidity, dustDensity, ppm);
+    // Lưu dữ liệu vào biến toàn cục với mutex
+    if (xSemaphoreTake(sensorMutex, portMAX_DELAY) == pdTRUE) {
+      sensorData.temperature = dht11_value.temperature;
+      sensorData.humidity = dht11_value.humidity;
+      sensorData.dustDensity = dustDensity;
+      sensorData.ppm = ppm;
+      xSemaphoreGive(sensorMutex);
+    }
 
-    Server.sendData(payload);
-    
+    // Serial.printf("Temp: %.1f°C, Humidity: %.1f%%, Dust: %.1f µg/m³, Gas: %.1f ppm\n",
+    //               dht11_value.temperature, dht11_value.humidity, dustDensity, ppm);
+  }
+}
+
+void SendHTTPTTask(void *parameter) {
+  TickType_t xLastWakeTime;
+  const TickType_t xFrequency = 600000 / portTICK_PERIOD_MS; // 600000 ms = 10 phút
+
+  // Khởi tạo thời điểm ban đầu
+  xLastWakeTime = xTaskGetTickCount();
+  
+  for(;;) {
     vTaskDelayUntil(&xLastWakeTime, xFrequency);
+
+    // Lấy dữ liệu cảm biến với mutex
+    float temp, hum, dust, ppm;
+    if (xSemaphoreTake(sensorMutex, portMAX_DELAY) == pdTRUE) {
+      temp = sensorData.temperature;
+      hum = sensorData.humidity;
+      dust = sensorData.dustDensity;
+      ppm = sensorData.ppm;
+      xSemaphoreGive(sensorMutex);
+    }
+
+    // --- Gửi dữ liệu lên server ---
+    String payload = PayloadFormat(temp, hum, dust, ppm);
+    Server.sendData(payload);
   }
 }
 
@@ -85,6 +137,10 @@ void CheckUpdateFirmwareTask(void *parameter) {
 
     if(Server.CheckUpdate()) 
     {
+      if (eTaskGetState(ReadSensorsHandle) != eSuspended) 
+      {
+        vTaskSuspend(ReadSensorsHandle);
+      }
       if (eTaskGetState(SendHTTPHandle) != eSuspended) 
       {
         vTaskSuspend(SendHTTPHandle);
