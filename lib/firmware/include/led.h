@@ -2,20 +2,14 @@
 #define LED_H
 
 #include <Arduino.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 class LedControl {
 private:
     uint8_t _pin;
-    bool _state;
 
-    unsigned long _lastMillis;
-    unsigned long _onTime;
-    unsigned long _offTime;
-
-    bool _blinkEnable;
-
-
-    void apply();               // áp mức điện áp ra chân GPIO
+    void write(bool on);   // LOW = ON, HIGH = OFF (LED dương chung)
 
 public:
     LedControl(uint8_t pin);
@@ -23,18 +17,18 @@ public:
     void begin();
 
     // Điều khiển cơ bản
-    void on();
-    void off();
-    void toggle();
 
-    // Nhấp nháy không blocking
+    // Điều khiển theo thời gian (blocking)
+    void onDelay(uint32_t ms);
+    void offDelay(uint32_t ms);
+
+    // Hàm blink CŨ (GIỮ NGUYÊN)
     void blink(unsigned long onMs, unsigned long offMs);
-    void stopBlink();
 
-    // Gọi trong loop()
-    void update();
-    void reset();    
-    bool getState();
+    // Trạng thái WiFi
+    void wifiConnected();      // OFF 5s → ON 100ms
+    void wifiConnecting();     // blink 500ms
+    void wifiDisconnected();   // blink 100ms
 };
 
 #endif

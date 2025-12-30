@@ -3,100 +3,56 @@
 LedControl::LedControl(uint8_t pin)
 {
     _pin = pin;
-    _state = false;
-    _lastMillis = 0;
-    _onTime = 0;
-    _offTime = 0;
-    _blinkEnable = false;
 }
-
 
 void LedControl::begin()
 {
     pinMode(_pin, OUTPUT);
-
-    // LED dương chung: HIGH = OFF
-    digitalWrite(_pin, HIGH);
-    _state = false;
+    digitalWrite(_pin, HIGH);   // OFF (LED dương chung)
 }
 
-void LedControl::apply()
+void LedControl::write(bool on)
 {
-    // LED dương chung → đảo logic
-    digitalWrite(_pin, _state ? LOW : HIGH);
+    digitalWrite(_pin, on ? LOW : HIGH);
 }
 
-void LedControl::on()
+
+void LedControl::onDelay(uint32_t ms)
 {
-    _state = true;
-    _blinkEnable = false;
-    apply();
+    write(true);
+    vTaskDelay(pdMS_TO_TICKS(ms));
 }
 
-void LedControl::off()
+void LedControl::offDelay(uint32_t ms)
 {
-    _state = false;
-    _blinkEnable = false;
-    apply();
+    write(false);
+    vTaskDelay(pdMS_TO_TICKS(ms));
 }
 
-void LedControl::toggle()
-{
-    _state = !_state;
-    apply();
-}
-
-
+/* ===== BLINK CŨ – GIỮ NGUYÊN ===== */
 
 void LedControl::blink(unsigned long onMs, unsigned long offMs)
 {
-   digitalWrite(_pin, LOW);
-   vTaskDelay(onMs);
-   digitalWrite(_pin, HIGH);
-   vTaskDelay(offMs);
-   //  _onTime = onMs;
-   //  _offTime = offMs;
-   //  _lastMillis = millis();
-   //  _blinkEnable = true;
-
-   //  _state = true;   // bắt đầu bằng ON
-   //  apply();
+    digitalWrite(_pin, LOW);
+    vTaskDelay(pdMS_TO_TICKS(onMs));
+    digitalWrite(_pin, HIGH);
+    vTaskDelay(pdMS_TO_TICKS(offMs));
 }
 
 
-void LedControl::stopBlink()
+void LedControl::wifiConnected()
 {
-    _blinkEnable = false;
+
+    blink(5000, 100);
 }
 
-void LedControl::update()
+void LedControl::wifiConnecting()
 {
-    if (!_blinkEnable) return;
 
-    unsigned long now = millis();
-    unsigned long period = _state ? _onTime : _offTime;
-
-    if (now - _lastMillis >= period)
-    {
-        _lastMillis = now;
-        toggle();
-    }
+    blink(500, 500);
 }
 
-
-bool LedControl::getState()
+void LedControl::wifiDisconnected()
 {
-    return _state;
+    blink(100, 100);
 }
-
-void LedControl::reset()
-{
-    _blinkEnable = false;
-    _state = false;          // OFF
-    _onTime = 0;
-    _offTime = 0;
-    _lastMillis = millis();  // reset mốc thời gian
-
-    apply();                // LED OFF (HIGH vì dương chung)
-}
-

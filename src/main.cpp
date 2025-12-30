@@ -73,10 +73,10 @@ void setup() {
   sensorMutex = xSemaphoreCreateMutex();
   
   // Tạo các task
-  // xTaskCreatePinnedToCore(ReadSensorsTask, "ReadSensorsTask", 4096, NULL, READ_SENSORS_PRIORITY, &ReadSensorsHandle, 0);
-  // xTaskCreatePinnedToCore(SendHTTPTTask, "SendHTTPTask", 10000, NULL, SEND_HTTP_PRIORITY, &SendHTTPHandle, 0);
-  // xTaskCreatePinnedToCore(CheckUpdateFirmwareTask, "CheckMQTTTask", 10000, NULL, CHECK_UPDATE_PRIORITY, &CheckUpdateHandle, 1);
-  // xTaskCreatePinnedToCore(LedTask, "LedTask", 2048, NULL, IDLE_PRIORITY + 1, &LedTaskHandle, 1);
+  xTaskCreatePinnedToCore(ReadSensorsTask, "ReadSensorsTask", 4096, NULL, READ_SENSORS_PRIORITY, &ReadSensorsHandle, 0);
+  xTaskCreatePinnedToCore(SendHTTPTTask, "SendHTTPTask", 10000, NULL, SEND_HTTP_PRIORITY, &SendHTTPHandle, 0);
+  xTaskCreatePinnedToCore(CheckUpdateFirmwareTask, "CheckMQTTTask", 10000, NULL, CHECK_UPDATE_PRIORITY, &CheckUpdateHandle, 1);
+  xTaskCreatePinnedToCore(LedTask, "LedTask", 2048, NULL, IDLE_PRIORITY + 1, &LedTaskHandle, 1);
 
 }
 
@@ -190,27 +190,26 @@ void CheckUpdateFirmwareTask(void *parameter)
 
 void LedTask(void *parameter)
 {
-  wifiLed.begin();
-  uint8_t lastState = 0xFF;
+    wifiLed.begin();
 
-  for (;;)
-  {
-    if (g_wifiState != lastState)
+    for (;;)
     {
-      wifiLed.reset();   // hàm bạn cần bổ sung trong LedControl
-      lastState = g_wifiState;
-
-      if (g_wifiState == WIFI_HAS_WIFI)
-        wifiLed.blink(100, 5000);
-      else if (g_wifiState == WIFI_NO_WIFI)
-        wifiLed.blink(100, 100);
-      else
-        wifiLed.blink(500, 500);
+        if (g_wifiState == WIFI_HAS_WIFI)
+        {
+            // OFF 5s -> ON 100ms
+            wifiLed.wifiConnected();
+        }
+        else if (g_wifiState == WIFI_NO_WIFI)
+        {
+            // blink 100ms
+            wifiLed.wifiDisconnected();
+        }
+        else
+        {
+            // blink 500ms
+            wifiLed.wifiConnecting();
+        }
     }
-
-    wifiLed.update();
-    vTaskDelay(pdMS_TO_TICKS(10));
-  }
 }
 
 
