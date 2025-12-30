@@ -13,6 +13,7 @@
 #include <DHT11.h>
 #include <MP25.h>
 #include <MQ2.h>
+#include <led.h>
 
 // Google Apps Script URL
 const char* scriptURL = "https://script.google.com/macros/s/AKfycbwhTF9oBVzyj8QJrQak8oJ33r3Y5sb9E3t3pU96MB9cQt6CT6TCBKiZiFTQa9Oolbc/exec";
@@ -22,5 +23,11 @@ const char* scriptURL = "https://script.google.com/macros/s/AKfycbwhTF9oBVzyj8QJ
 #define PIN_DHT       21
 #define PIN_PM_LED    23
 #define PIN_PM_ADC    32
+#define LED_WIFI      27
+
+#define WIFI_HAS_WIFI        (1 << 0)
+#define WIFI_NO_WIFI         (1 << 1)
+#define WIFI_CONNECTING      (1 << 2)
+
 
 #endif // __ALL_HEADER_H__

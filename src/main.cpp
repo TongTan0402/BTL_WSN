@@ -20,6 +20,7 @@ enum {
 TaskHandle_t ReadSensorsHandle; // handle của task đọc cảm biến
 TaskHandle_t SendHTTPHandle; // handle của task gửi HTTP
 TaskHandle_t CheckUpdateHandle; // handle của task kiểm tra cập nhật
+TaskHandle_t LedTaskHandle; // hanlde của task Led Wifi
 
 // Biến lưu dữ liệu cảm biến
 struct SensorData {
@@ -36,11 +37,14 @@ unsigned long last_time = 0; // thời gian lần thử reconnect WiFi cuối c�
 void ReadSensorsTask(void *parameter);
 void SendHTTPTTask(void *parameter);
 void CheckUpdateFirmwareTask(void *parameter);
+void LedTask(void *parameter);
 
 
-
+volatile uint8_t g_wifiState = WIFI_CONNECTING;
+LedControl wifiLed(LED_WIFI);
 
 void setup() {
+  wifiLed.begin();
   Serial.begin(115200);
   delay(1000);
   
@@ -69,9 +73,11 @@ void setup() {
   sensorMutex = xSemaphoreCreateMutex();
   
   // Tạo các task
-  xTaskCreatePinnedToCore(ReadSensorsTask, "ReadSensorsTask", 4096, NULL, READ_SENSORS_PRIORITY, &ReadSensorsHandle, 0);
-  xTaskCreatePinnedToCore(SendHTTPTTask, "SendHTTPTask", 10000, NULL, SEND_HTTP_PRIORITY, &SendHTTPHandle, 0);
-  xTaskCreatePinnedToCore(CheckUpdateFirmwareTask, "CheckMQTTTask", 10000, NULL, CHECK_UPDATE_PRIORITY, &CheckUpdateHandle, 1);
+  // xTaskCreatePinnedToCore(ReadSensorsTask, "ReadSensorsTask", 4096, NULL, READ_SENSORS_PRIORITY, &ReadSensorsHandle, 0);
+  // xTaskCreatePinnedToCore(SendHTTPTTask, "SendHTTPTask", 10000, NULL, SEND_HTTP_PRIORITY, &SendHTTPHandle, 0);
+  // xTaskCreatePinnedToCore(CheckUpdateFirmwareTask, "CheckMQTTTask", 10000, NULL, CHECK_UPDATE_PRIORITY, &CheckUpdateHandle, 1);
+  // xTaskCreatePinnedToCore(LedTask, "LedTask", 2048, NULL, IDLE_PRIORITY + 1, &LedTaskHandle, 1);
+
 }
 
 
@@ -140,27 +146,74 @@ void SendHTTPTTask(void *parameter) {
   }
 }
 
-void CheckUpdateFirmwareTask(void *parameter) {
-  for(;;) {
+void CheckUpdateFirmwareTask(void *parameter)
+{
+  wl_status_t lastStatus = WL_IDLE_STATUS;
+
+  for (;;)
+  {
     Server.MQTTLoop();
 
-    if(Server.CheckUpdate()) 
+    wl_status_t currentStatus = WiFi.status();
+
+    if (currentStatus != lastStatus)
     {
-      if (eTaskGetState(ReadSensorsHandle) != eSuspended) 
+      if (currentStatus == WL_CONNECTED)
       {
-        vTaskSuspend(ReadSensorsHandle);
+        g_wifiState = WIFI_HAS_WIFI;
       }
-      if (eTaskGetState(SendHTTPHandle) != eSuspended) 
+      else if (currentStatus == WL_IDLE_STATUS ||
+               currentStatus == WL_DISCONNECTED)
       {
-        vTaskSuspend(SendHTTPHandle);
+        g_wifiState = WIFI_NO_WIFI;
       }
-    
-      Serial.println("Bắt đầu cập nhật firmware...");
+      else
+      {
+        g_wifiState = WIFI_CONNECTING;
+      }
+
+      lastStatus = currentStatus;
+    }
+
+    // OTA giữ nguyên
+    if (Server.CheckUpdate())
+    {
+      vTaskSuspend(ReadSensorsHandle);
+      vTaskSuspend(SendHTTPHandle);
       Server.OtaUpdate();
     }
-    vTaskDelay(100 / portTICK_PERIOD_MS);  // Delay 100ms sau mỗi batch
+
+    vTaskDelay(pdMS_TO_TICKS(100));
   }
 }
+
+
+void LedTask(void *parameter)
+{
+  wifiLed.begin();
+  uint8_t lastState = 0xFF;
+
+  for (;;)
+  {
+    if (g_wifiState != lastState)
+    {
+      wifiLed.reset();   // hàm bạn cần bổ sung trong LedControl
+      lastState = g_wifiState;
+
+      if (g_wifiState == WIFI_HAS_WIFI)
+        wifiLed.blink(100, 5000);
+      else if (g_wifiState == WIFI_NO_WIFI)
+        wifiLed.blink(100, 100);
+      else
+        wifiLed.blink(500, 500);
+    }
+
+    wifiLed.update();
+    vTaskDelay(pdMS_TO_TICKS(10));
+  }
+}
+
+
 
 #else
 #include <WiFi.h>
