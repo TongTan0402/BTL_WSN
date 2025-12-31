@@ -13,6 +13,7 @@ enum {
   SEND_HTTP_PRIORITY ,
   CHECK_UPDATE_PRIORITY,
   READ_SENSORS_PRIORITY,
+  LED_PRIORITY ,
 
   PRIORITY_COUNT
 };
@@ -40,13 +41,15 @@ void CheckUpdateFirmwareTask(void *parameter);
 void LedTask(void *parameter);
 
 
-volatile uint8_t g_wifiState = WIFI_CONNECTING;
-LedControl wifiLed(LED_WIFI);
+volatile uint8_t g_wifiState = WIFI_NO_WIFI;
+LedControl wifiLed(PIN_LED_WIFI);
 
 void setup() {
   wifiLed.begin();
   Serial.begin(115200);
   delay(1000);
+  
+  xTaskCreatePinnedToCore(LedTask, "LedTask", 2048, NULL, LED_PRIORITY, &LedTaskHandle, 1);
   
   Serial.println("\n\n========================================");
   Serial.println("ESP32 đã khởi động!");
@@ -76,7 +79,6 @@ void setup() {
   xTaskCreatePinnedToCore(ReadSensorsTask, "ReadSensorsTask", 4096, NULL, READ_SENSORS_PRIORITY, &ReadSensorsHandle, 0);
   xTaskCreatePinnedToCore(SendHTTPTTask, "SendHTTPTask", 10000, NULL, SEND_HTTP_PRIORITY, &SendHTTPHandle, 0);
   xTaskCreatePinnedToCore(CheckUpdateFirmwareTask, "CheckMQTTTask", 10000, NULL, CHECK_UPDATE_PRIORITY, &CheckUpdateHandle, 1);
-  xTaskCreatePinnedToCore(LedTask, "LedTask", 2048, NULL, IDLE_PRIORITY + 1, &LedTaskHandle, 1);
 
 }
 
@@ -148,44 +150,35 @@ void SendHTTPTTask(void *parameter) {
 
 void CheckUpdateFirmwareTask(void *parameter)
 {
-  wl_status_t lastStatus = WL_IDLE_STATUS;
-
-  for (;;)
-  {
-    Server.MQTTLoop();
-
-    wl_status_t currentStatus = WiFi.status();
-
-    if (currentStatus != lastStatus)
+    for (;;)
     {
-      if (currentStatus == WL_CONNECTED)
-      {
-        g_wifiState = WIFI_HAS_WIFI;
-      }
-      else if (currentStatus == WL_IDLE_STATUS ||
-               currentStatus == WL_DISCONNECTED)
-      {
-        g_wifiState = WIFI_NO_WIFI;
-      }
-      else
-      {
-        g_wifiState = WIFI_CONNECTING;
-      }
+        Server.MQTTLoop();
 
-      lastStatus = currentStatus;
+        wl_status_t status = WiFi.status();
+
+        switch (status)
+        {
+        case WL_CONNECTED:
+            g_wifiState = WIFI_HAS_WIFI;
+            break;
+
+        default:
+            g_wifiState = WIFI_NO_WIFI;
+            break;
+        }
+
+        // OTA giữ nguyên
+        if (Server.CheckUpdate())
+        {
+            vTaskSuspend(ReadSensorsHandle);
+            vTaskSuspend(SendHTTPHandle);
+            Server.OtaUpdate();
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(200));
     }
-
-    // OTA giữ nguyên
-    if (Server.CheckUpdate())
-    {
-      vTaskSuspend(ReadSensorsHandle);
-      vTaskSuspend(SendHTTPHandle);
-      Server.OtaUpdate();
-    }
-
-    vTaskDelay(pdMS_TO_TICKS(100));
-  }
 }
+
 
 
 void LedTask(void *parameter)
@@ -203,11 +196,6 @@ void LedTask(void *parameter)
         {
             // blink 100ms
             wifiLed.wifiDisconnected();
-        }
-        else
-        {
-            // blink 500ms
-            wifiLed.wifiConnecting();
         }
     }
 }

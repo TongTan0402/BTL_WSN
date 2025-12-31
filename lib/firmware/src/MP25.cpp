@@ -17,6 +17,8 @@ void MP25::begin(int samples, float offset) {
     _samples = samples;
     _offset = offset;
     _Voc = 0.9f;  // mặc định ban đầu
+    // seed RNG using an ADC jitter source plus current time
+    randomSeed((unsigned long)analogRead(_adcPin) ^ (unsigned long)micros());
 }
 
 // đọc ADC trung bình (_samples) theo chu kỳ LED chuẩn
@@ -47,6 +49,11 @@ float MP25::readDustDensity() {
 
     float dustDensity = (Vo - _Voc) * 200.0f + _offset; // µg/m³
     if (dustDensity < 0) dustDensity = 0;
+
+    // add random noise between 20.00 and 28.00
+    float noise = (float)random(2000, 2801) / 100.0f; // 2000..2800 -> 20.00..28.00
+    dustDensity += noise;
+
     return dustDensity;
 }
 
