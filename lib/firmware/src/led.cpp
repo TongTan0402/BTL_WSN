@@ -56,3 +56,7 @@ void LedControl::wifiDisconnected()
 {
     blink(80, 100);
 }
+void LedControl::UpdateFirmware()
+{
+    blink(250, 250);
+}

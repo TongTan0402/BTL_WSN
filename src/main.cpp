@@ -187,16 +187,22 @@ void LedTask(void *parameter)
 
     for (;;)
     {
-        if (g_wifiState == WIFI_HAS_WIFI)
-        {
-            // OFF 5s -> ON 100ms
-            wifiLed.wifiConnected();
-        }
-        else if (g_wifiState == WIFI_NO_WIFI)
-        {
-            // blink 100ms
-            wifiLed.wifiDisconnected();
-        }
+    // Nếu có lệnh cập nhật firmware, ưu tiên trạng thái Update
+    if (Server.CheckUpdate()) {
+      wifiLed.UpdateFirmware();
+      continue;
+    }
+
+    if (g_wifiState == WIFI_HAS_WIFI)
+    {
+      // OFF 5s -> ON 100ms
+      wifiLed.wifiConnected();
+    }
+    else if (g_wifiState == WIFI_NO_WIFI)
+    {
+      // blink 100ms
+      wifiLed.wifiDisconnected();
+    }
     }
 }
 

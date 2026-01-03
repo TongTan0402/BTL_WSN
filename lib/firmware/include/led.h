@@ -29,6 +29,7 @@ public:
     void wifiConnected();      // OFF 5s → ON 100ms
     void wifiConnecting();     // blink 500ms
     void wifiDisconnected();   // blink 100ms
+    void UpdateFirmware();
 };
 
 #endif
