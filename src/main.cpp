@@ -41,7 +41,6 @@ void CheckUpdateFirmwareTask(void *parameter);
 void LedTask(void *parameter);
 
 
-volatile uint8_t g_wifiState = WIFI_NO_WIFI;
 LedControl wifiLed(PIN_LED_WIFI);
 
 void setup() {
@@ -79,7 +78,6 @@ void setup() {
   xTaskCreatePinnedToCore(ReadSensorsTask, "ReadSensorsTask", 4096, NULL, READ_SENSORS_PRIORITY, &ReadSensorsHandle, 0);
   xTaskCreatePinnedToCore(SendHTTPTTask, "SendHTTPTask", 10000, NULL, SEND_HTTP_PRIORITY, &SendHTTPHandle, 0);
   xTaskCreatePinnedToCore(CheckUpdateFirmwareTask, "CheckMQTTTask", 10000, NULL, CHECK_UPDATE_PRIORITY, &CheckUpdateHandle, 1);
-
 }
 
 
@@ -150,60 +148,49 @@ void SendHTTPTTask(void *parameter) {
 
 void CheckUpdateFirmwareTask(void *parameter)
 {
-    for (;;)
+  for (;;)
+  {
+    Server.MQTTLoop();
+
+    // OTA giữ nguyên
+    if (Server.CheckUpdate())
     {
-        Server.MQTTLoop();
-
-        wl_status_t status = WiFi.status();
-
-        switch (status)
-        {
-        case WL_CONNECTED:
-            g_wifiState = WIFI_HAS_WIFI;
-            break;
-
-        default:
-            g_wifiState = WIFI_NO_WIFI;
-            break;
-        }
-
-        // OTA giữ nguyên
-        if (Server.CheckUpdate())
-        {
-            vTaskSuspend(ReadSensorsHandle);
-            vTaskSuspend(SendHTTPHandle);
-            Server.OtaUpdate();
-        }
-
-        vTaskDelay(pdMS_TO_TICKS(200));
+        vTaskSuspend(ReadSensorsHandle);
+        vTaskSuspend(SendHTTPHandle);
+        Server.OtaUpdate();
     }
+
+    vTaskDelay(pdMS_TO_TICKS(200));
+  }
 }
 
 
 
 void LedTask(void *parameter)
 {
-    wifiLed.begin();
+  wifiLed.begin();
 
-    for (;;)
+  for (;;)
+  {
+    switch(Server.GetState())
     {
-    // Nếu có lệnh cập nhật firmware, ưu tiên trạng thái Update
-    if (Server.CheckUpdate()) {
-      wifiLed.UpdateFirmware();
-      continue;
-    }
+      case WIFI_CONNECTED:
+        wifiLed.wifiConnected();
+        break;
 
-    if (g_wifiState == WIFI_HAS_WIFI)
-    {
-      // OFF 5s -> ON 100ms
-      wifiLed.wifiConnected();
+      case WIFI_DISCONNECTED:
+        wifiLed.wifiDisconnected();
+        break;
+
+      case UPDATE_AVAILABLE:
+        wifiLed.UpdateFirmware();
+        break;
+
+      default:
+        wifiLed.wifiConnecting();
+        break;
     }
-    else if (g_wifiState == WIFI_NO_WIFI)
-    {
-      // blink 100ms
-      wifiLed.wifiDisconnected();
-    }
-    }
+  }
 }
 
 

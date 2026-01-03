@@ -23,11 +23,7 @@ const char* scriptURL = "https://script.google.com/macros/s/AKfycbwhTF9oBVzyj8QJ
 #define PIN_DHT       21
 #define PIN_PM_LED    23
 #define PIN_PM_ADC    32
-#define PIN_LED_WIFI      27
-
-#define WIFI_HAS_WIFI        (1 << 0)
-#define WIFI_NO_WIFI         (1 << 1)
-#define WIFI_CONNECTING      (1 << 2)
+#define PIN_LED_WIFI  27
 
 
 #endif // __ALL_HEADER_H__
