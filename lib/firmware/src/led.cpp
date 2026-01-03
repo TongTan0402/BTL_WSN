@@ -33,9 +33,9 @@ void LedControl::offDelay(uint32_t ms)
 
 void LedControl::blink(unsigned long onMs, unsigned long offMs)
 {
-    digitalWrite(_pin, HIGH);
-    vTaskDelay(pdMS_TO_TICKS(onMs));
     digitalWrite(_pin, LOW);
+    vTaskDelay(pdMS_TO_TICKS(onMs));
+    digitalWrite(_pin, HIGH);
     vTaskDelay(pdMS_TO_TICKS(offMs));
 }
 
@@ -43,7 +43,7 @@ void LedControl::blink(unsigned long onMs, unsigned long offMs)
 void LedControl::wifiConnected()
 {
 
-    blink(3000, 100);
+    blink(80, 3000);
 }
 
 void LedControl::wifiConnecting()

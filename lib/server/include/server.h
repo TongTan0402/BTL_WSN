@@ -3,6 +3,13 @@
 #include <Arduino.h>
 #include <stdint.h>
 
+typedef enum 
+{
+    WIFI_DISCONNECTED = 0,
+    WIFI_CONNECTED = 1,
+    UPDATE_AVAILABLE = 2
+}Server_State_e;
+
 class Server_c
 {
   private:
@@ -16,7 +23,7 @@ class Server_c
 
     void SaveWifi(char *new_ssid, char *new_password);
 
-    bool IsWiFiConnected();
+    Server_State_e GetState();
     void OtaUpdate();
 };
 

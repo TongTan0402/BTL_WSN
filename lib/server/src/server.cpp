@@ -168,8 +168,22 @@ void WiFi_MQTT_Init() {
 }
 
 
-bool Server_c::IsWiFiConnected() {
-  return WiFi.status() == WL_CONNECTED;
+Server_State_e Server_c::GetState() 
+{
+  Server_State_e state;
+  if (WiFi.status() == WL_CONNECTED) 
+  {
+    state = WIFI_CONNECTED;
+    if (update_firmware) 
+    {
+      state = UPDATE_AVAILABLE;
+    }
+  } 
+  else 
+  {
+    state = WIFI_DISCONNECTED;
+  }
+  return state;
 }
 
 void Server_c::MQTTLoop() {
