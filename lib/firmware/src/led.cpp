@@ -43,7 +43,7 @@ void LedControl::blink(unsigned long onMs, unsigned long offMs)
 void LedControl::wifiConnected()
 {
 
-    blink(5000, 100);
+    blink(3000, 100);
 }
 
 void LedControl::wifiConnecting()
